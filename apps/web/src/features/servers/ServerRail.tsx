@@ -28,6 +28,7 @@ import { CreateSpaceModal } from './CreateSpaceModal';
 import { locateInList, usePointerDrag } from '../../components/usePointerDrag';
 import { moveSpace } from '../../matrix/spaceOrder';
 import { RailClock } from '../../app/StatusClock';
+import { mobileSpacesOpenAtom } from '../../app/state/mobile';
 import { nameHue } from '../../components/Avatar';
 import './ServerRail.css';
 
@@ -229,7 +230,10 @@ export function ServerRail() {
 
   // A Space opens fresh, with nothing chosen in it: ChannelList then lands on its unseen news or its
   // first text channel (matrix/spaceNews.ts), rather than whatever view the last Space was on.
+  // On a phone the rail is the Spaces screen (MobileTabBar.tsx): going anywhere from it closes it.
+  const setMobileSpacesOpen = useSetAtom(mobileSpacesOpenAtom);
   const selectSpace = (id: string | null) => {
+    setMobileSpacesOpen(false);
     setGlobalFeedOpen(false);
     setProfileUserId(null);
     setSelectedSpaceId(id);
@@ -238,6 +242,7 @@ export function ServerRail() {
   };
 
   const openDirectMessage = (roomId: string) => {
+    setMobileSpacesOpen(false);
     setGlobalFeedOpen(false);
     setProfileUserId(null);
     setSpaceView(null);
@@ -246,6 +251,7 @@ export function ServerRail() {
   };
 
   const handleInviteAccepted = (room: Room) => {
+    setMobileSpacesOpen(false);
     const kind = classifyInvite(mx, room);
     if (kind === 'space') {
       selectSpace(room.roomId);

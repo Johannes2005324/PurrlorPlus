@@ -36,6 +36,7 @@ import { StatusClock } from './StatusClock';
 import { useTickerOn } from './effects';
 import { NotificationTicker } from '../features/notifications/NotificationTicker';
 import { FeedSidebar } from '../features/feed/FeedSidebar';
+import { MobileTabBar } from '../features/servers/MobileTabBar';
 import { Wallpaper } from '../components/Wallpaper';
 import { useVisualViewport } from './useVisualViewport';
 import { CommissionAlerts } from '../features/profilePage/CommissionAlerts';
@@ -44,7 +45,7 @@ import { useOpenRoomFromNotification } from '../matrix/hooks/useOpenRoomFromNoti
 import { useRecoveryStatus } from '../matrix/hooks/useRecoveryStatus';
 import { WelcomeGuideHost } from '../features/onboarding/WelcomeGuideHost';
 import { openPostAtom, globalFeedOpenAtom, profileUserIdAtom, selectedRoomIdAtom, selectedSpaceViewAtom } from './state/selection';
-import { desktopMemberListHiddenAtom, mobileMemberListOpenAtom } from './state/mobile';
+import { desktopMemberListHiddenAtom, mobileMemberListOpenAtom, mobileSpacesOpenAtom } from './state/mobile';
 
 /** Real Discord-shaped three-pane shell, wired to live Matrix data (Phase 1+). */
 export function AppShell() {
@@ -62,6 +63,7 @@ export function AppShell() {
   const postOpen = !!useAtomValue(openPostAtom);
   const musicOn = !!useAtomValue(musicQueueAtom);
   const tickerOn = useTickerOn();
+  const mobileSpacesOpen = useAtomValue(mobileSpacesOpenAtom);
   // On a phone the main pane only shows once there's something in it: a room, a Space's Posts,
   // or the global feed. The last two aren't rooms, so a room check alone left them invisible.
   const mainPaneHasContent = !!selectedRoomId || spaceView !== null || globalFeedOpen || profileOpen || postOpen;
@@ -81,7 +83,7 @@ export function AppShell() {
       // Below the responsive breakpoint (styles/base/shell.css) the shell shows one "screen" at
       // a time instead of all four columns side by side — these two attributes are what the
       // media query switches on. They're no-ops above the breakpoint.
-      data-nu-mobile-pane={mainPaneHasContent ? 'chat' : 'sidebar'}
+      data-nu-mobile-pane={mobileSpacesOpen ? 'spaces' : mainPaneHasContent ? 'chat' : 'sidebar'}
       data-nu-mobile-members-open={mobileMembersOpen}
       data-nu-music={musicOn ? 'on' : undefined}
       data-nu-ticker={tickerOn ? 'on' : undefined}
@@ -106,6 +108,7 @@ export function AppShell() {
         />
       )}
       {tickerOn && <NotificationTicker />}
+      <MobileTabBar />
       <MusicPlayerHost />
       <MusicPlayerBar variant="mini" />
       {/* Not over a chat, where it covered the composer: on the channel list. */}

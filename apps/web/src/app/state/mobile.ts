@@ -16,3 +16,10 @@ export const mobileMemberListOpenAtom = atom<boolean>(false);
  * someone who prefers a wider timeline wants that every time, not just until the next reload.
  */
 export const desktopMemberListHiddenAtom = atomWithStorage<boolean>('nekous_member_list_hidden', false);
+
+/**
+ * Whether the phone layout is showing its Spaces screen: the server rail laid out as a grid, opened
+ * from the bottom tab bar's Spaces tab (MobileTabBar.tsx). Choosing a Space or a DM there closes it.
+ * Has no effect above the responsive breakpoint.
+ */
+export const mobileSpacesOpenAtom = atom<boolean>(false);
