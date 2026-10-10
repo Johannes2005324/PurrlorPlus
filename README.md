@@ -140,7 +140,7 @@ default look is "Mine", after the [Ultimit](https://github.com/m0nnnna/ultimit) 
 crystal-shard wallpaper, with a 12-hour clock above the member list and your notifications on a ticker
 along the bottom. Appearance → Effects switches between **Full** (glass, blur, wallpaper, animation) and
 **Safe** (flat and light, for a weaker machine); **Auto** picks for you. Ultimit's other skins ("Amber",
-"Silver", "Verdant"), the previous default "Nightfur", "Y2K Chatroom" and "Lola" are one click away, or write your own. Space Settings lets you
+"Silver", "Verdant"), a pink "Sakura", the contributed "Royal Neon" (a purple cat behind the glass), the previous default "Nightfur", "Y2K Chatroom" and "Lola" are one click away, or write your own. Space Settings lets you
 set a nickname scoped to just that Space, independent of your global display name.
 
 Your profile can also have a **page**: on your profile, **Build your page** opens a page builder
@@ -315,7 +315,8 @@ opens a new post with it.
   a `--nu-*` token (`src/styles/tokens.css`), so a theme only needs to override tokens, not hunt
   down individual components.
 - Ships with the Ultimit-style "Mine" default (black glass, shard wallpaper, ice accent) and
-  presets: Ultimit's Amber, Silver and Verdant skins, the previous default "Nightfur", the glossy
+  presets: Ultimit's Amber, Silver and Verdant skins, a pink Sakura, the contributed Royal Neon
+  (purple and magenta, with its cat art as the wallpaper), the previous default "Nightfur", the glossy
   "Y2K Chatroom", the black-and-hot-pink "Lola", Foxy and Halloween.
 - Expanded profiles — bio, banner, and animated (GIF/WebP) avatars, on top of Matrix's bare
   `displayname`/`avatar_url`, via MSC4133 extended profiles.

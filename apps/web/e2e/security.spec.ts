@@ -108,3 +108,34 @@ test('the Halloween preset dresses the app up, its font and pictures allowed by 
   expect(look.lantern).toContain('data:image/svg+xml');
   expect(await violations()).toEqual([]);
 });
+
+test('the Royal Neon preset puts its cat behind the panels, allowed by the policy', async ({ page }) => {
+  // Full effects: Safe (Auto, in a headless browser) leaves every wallpaper out.
+  await page.addInitScript(() => localStorage.setItem('nekous_effects', 'full'));
+  const violations = await watchViolations(page);
+  const alice = await createUser('alice');
+  const { spaceName } = await createSpaceWithChannel(alice);
+  await logIn(page, alice);
+  await openChannel(page, spaceName, 'general');
+  await role(page, 'user-panel-settings').click();
+  await page.getByRole('button', { name: 'Appearance' }).click();
+  await role(page, 'appearance-settings-preset').filter({ hasText: 'Royal Neon' }).click();
+  await role(page, 'appearance-settings-apply').click();
+  await expect(role(page, 'appearance-settings-left-out')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+
+  const wallpaper = role(page, 'wallpaper');
+  await expect(wallpaper).toHaveCSS('background-image', /royal-neon-cat\.webp/);
+  // The picture itself loads from the build.
+  const loaded = await page.evaluate(
+    () =>
+      new Promise<boolean>((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(img.naturalWidth > 0);
+        img.onerror = () => resolve(false);
+        img.src = '/themes/royal-neon-cat.webp';
+      })
+  );
+  expect(loaded).toBe(true);
+  expect(await violations()).toEqual([]);
+});

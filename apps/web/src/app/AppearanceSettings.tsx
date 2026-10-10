@@ -6,7 +6,8 @@ import { getStoredThemeCss, saveThemeCss } from './theme';
 import { FOXY_CSS } from './themes/foxy';
 import { HALLOWEEN_CSS } from './themes/halloween';
 import { NIGHTFUR_CSS } from './themes/nightfur';
-import { AMBER_CSS, MINE_CSS, SILVER_CSS, VERDANT_CSS } from './themes/ultimit';
+import { AMBER_CSS, MINE_CSS, SAKURA_CSS, SILVER_CSS, VERDANT_CSS } from './themes/ultimit';
+import { ROYAL_NEON_CSS } from './themes/royalNeon';
 import './AppearanceSettings.css';
 
 /** Condensed in-app copy of docs/theming.md's token table — a theme author working from this
@@ -52,6 +53,9 @@ const THEME_PRESETS: { name: string; swatch: [string, string]; css: string }[] =
   { name: 'Amber', swatch: ['#b84d05', '#ffb04a'], css: AMBER_CSS },
   { name: 'Silver', swatch: ['#f6f7f9', '#2c5b88'], css: SILVER_CSS },
   { name: 'Verdant', swatch: ['#062a0c', '#b9ff8c'], css: VERDANT_CSS },
+  { name: 'Sakura', swatch: ['#5c0f35', '#ff8fc4'], css: SAKURA_CSS },
+  // A contributed theme, with its cat art as the wallpaper (themes/royalNeon.ts).
+  { name: 'Royal Neon', swatch: ['#a900ff', '#ff00d9'], css: ROYAL_NEON_CSS },
   // The default look before the Ultimit redesign, with the frame turned off (themes/nightfur.ts).
   { name: 'Nightfur', swatch: ['#14101c', '#ffb547'], css: NIGHTFUR_CSS },
   {

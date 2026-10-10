@@ -116,3 +116,36 @@ export const VERDANT_CSS = `/* Verdant: Ultimit's forest skin. */
   --nu-wall-shade: #002800;
 }
 `;
+
+/** Sakura: a pink skin in the same family, for Purrlor (Ultimit itself has no pink one). */
+export const SAKURA_CSS = `/* Sakura: blossom pink. */
+:root {
+  --nu-color-bg-app: #1a0610;
+  --nu-color-bg-primary: #22091a;
+  --nu-color-bg-secondary: #2a0c20;
+  --nu-color-bg-tertiary: #3b1430;
+  --nu-color-bg-elevated: #4c1c3e;
+
+  --nu-color-text-primary: #fff0f6;
+  --nu-color-text-secondary: #f6cfe1;
+  --nu-color-text-muted: #e0a9c3;
+  --nu-color-text-link: #ffb3d6;
+
+  --nu-color-accent: #ff8fc4;
+  --nu-color-accent-hover: #ffaed4;
+  --nu-color-accent-2: #c9b8ff;
+  --nu-color-accent-2-hover: #dacdff;
+  --nu-color-on-accent: #2a0614;
+  --nu-color-role-admin: #ffd98f;
+  --nu-color-role-moderator: #c9b8ff;
+
+  --nu-color-border: rgba(255, 210, 230, 0.2);
+  --nu-color-border-strong: rgba(255, 210, 230, 0.55);
+
+  --nu-wall-ground-start: #5c0f35;
+  --nu-wall-ground-end: #ffb3d1;
+  --nu-wall-shard: #fff5fa;
+  --nu-wall-grid: #ffe6f1;
+  --nu-wall-shade: #6b0a38;
+}
+`;
