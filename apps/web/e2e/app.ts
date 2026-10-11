@@ -24,7 +24,8 @@ export async function logIn(page: Page, user: TestUser): Promise<void> {
   await page.getByLabel('Username').fill(user.localpart);
   await page.getByLabel('Password').fill(user.password);
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(role(page, 'server-rail')).toBeVisible();
+  // Signed in: the server rail on a wide screen, the bottom tab bar on a phone (which hides the rail).
+  await expect(role(page, 'server-rail').or(role(page, 'mobile-tabs')).filter({ visible: true }).first()).toBeVisible();
 }
 
 export async function openChannel(page: Page, spaceName: string, channelName: string): Promise<void> {

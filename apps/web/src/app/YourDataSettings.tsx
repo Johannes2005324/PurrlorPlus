@@ -136,6 +136,16 @@ function deleteStatus(progress: DeleteProgress | undefined): string {
   }
 }
 
+/** Tells the sign-in screen, after the reload, that the account was deleted (or takes that back). */
+function markAccountDeleted(deleted: boolean): void {
+  try {
+    if (deleted) sessionStorage.setItem(ACCOUNT_DELETED_FLAG, '1');
+    else sessionStorage.removeItem(ACCOUNT_DELETED_FLAG);
+  } catch {
+    // Only the note on the sign-in screen is lost.
+  }
+}
+
 /** Signs this browser out of the deleted account and back to the sign-in screen. */
 async function leaveDeletedAccount(mx: ReturnType<typeof useMatrixClient>): Promise<void> {
   mx.stopClient();
@@ -167,9 +177,15 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
     setRunning(true);
     setError(undefined);
     try {
-      await deleteAccount(mx, password, { deletePosts, displayName: profile.displayName || profile.userId }, setProgress);
+      await deleteAccount(mx, password, { deletePosts, displayName: profile.displayName || profile.userId }, (step) => {
+        // Once the deletion itself is under way, a sync can find the token gone and reload to the
+        // sign-in screen (App.tsx) before deleteAccount even returns: leave the note ahead of it.
+        if (step.step === 'deleting') markAccountDeleted(true);
+        setProgress(step);
+      });
       await leaveDeletedAccount(mx);
     } catch (err) {
+      markAccountDeleted(false);
       setRunning(false);
       setError(
         err instanceof WrongPasswordError
