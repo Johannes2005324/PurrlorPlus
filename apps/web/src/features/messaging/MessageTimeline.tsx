@@ -109,13 +109,26 @@ function dayLabel(ts: number): string {
 // Made once and reused: `toLocaleTimeString` and friends build a new formatter on every call,
 // which, once per message on every redraw, was the single biggest cost of scrolling on a phone.
 const TIME = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' });
-const DATE = new Intl.DateTimeFormat([]);
+const SHORT_DATE = new Intl.DateTimeFormat([], { month: 'short', day: 'numeric' });
+const SHORT_DATE_WITH_YEAR = new Intl.DateTimeFormat([], { month: 'short', day: 'numeric', year: 'numeric' });
+/** IRC mode's time column: 24-hour, the console way (the Ultimit mockup's 09:12). */
+const IRC_TIME = new Intl.DateTimeFormat([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 const DATE_TIME = new Intl.DateTimeFormat([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
 const DAY = new Intl.DateTimeFormat([], { weekday: 'long', month: 'long', day: 'numeric' });
 const DAY_WITH_YEAR = new Intl.DateTimeFormat([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
 function formatTime(ts: number): string {
   return TIME.format(ts);
+}
+
+/** A message's time beside its name: the time alone today, then short forms (the mockup's "Yday",
+ *  "Oct 07") rather than a full numeric date. The full date and time are in its tooltip. */
+function messageTime(ts: number): string {
+  const now = Date.now();
+  if (isSameDay(ts, now)) return formatTime(ts);
+  if (isSameDay(ts, now - 24 * 60 * 60 * 1000)) return `Yday ${formatTime(ts)}`;
+  const date = (new Date(ts).getFullYear() !== new Date(now).getFullYear() ? SHORT_DATE_WITH_YEAR : SHORT_DATE).format(ts);
+  return `${date} ${formatTime(ts)}`;
 }
 
 /** A labeled rule across the timeline — a new day, or where your unread messages begin. */
@@ -412,7 +425,15 @@ const MessageRow = memo(function MessageRow({
       data-nu-event-id={eventId ?? undefined}
       {...touchActions.handlers}
     >
-      {isGrouped ? (
+      {ircMode ? (
+        // IRC mode: no picture, the time in a column down the left on every line, as in the
+        // mockup's lists. The day is on the divider above, so the time of day is enough here.
+        <div className="nu-timeline__message-gutter nu-timeline__message-gutter--irc" data-nu-role="timeline-message-gutter">
+          <time className="nu-timeline__message-irc-time" dateTime={new Date(event.getTs()).toISOString()} title={DATE_TIME.format(event.getTs())}>
+            {IRC_TIME.format(event.getTs())}
+          </time>
+        </div>
+      ) : isGrouped ? (
         <div className="nu-timeline__message-gutter" data-nu-role="timeline-message-gutter">
           <span className="nu-timeline__message-hover-time">{formatTime(event.getTs())}</span>
         </div>
@@ -423,7 +444,7 @@ const MessageRow = memo(function MessageRow({
           data-nu-role="timeline-message-avatar"
           onClick={() => setShowProfile(true)}
         >
-          <Avatar name={senderName} mxcUrl={webhook ? webhook.avatarUrl ?? null : sender?.getMxcAvatarUrl()} size={ircMode ? 24 : 40} />
+          <Avatar name={senderName} mxcUrl={webhook ? webhook.avatarUrl ?? null : sender?.getMxcAvatarUrl()} size={40} />
         </button>
       )}
       <div className="nu-timeline__message-body">
@@ -456,9 +477,11 @@ const MessageRow = memo(function MessageRow({
                     APP
                   </span>
                 )}
-                <time className="nu-timeline__message-time" dateTime={new Date(event.getTs()).toISOString()} title={DATE_TIME.format(event.getTs())}>
-                  {isSameDay(event.getTs(), Date.now()) ? formatTime(event.getTs()) : `${DATE.format(event.getTs())} ${formatTime(event.getTs())}`}
-                </time>
+                {!ircMode && (
+                  <time className="nu-timeline__message-time" dateTime={new Date(event.getTs()).toISOString()} title={DATE_TIME.format(event.getTs())}>
+                    {messageTime(event.getTs())}
+                  </time>
+                )}
               </>
             )}
             {editedEvent && (

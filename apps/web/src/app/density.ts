@@ -4,11 +4,11 @@ import { useSyncExternalStore } from 'react';
  * IRC mode: everything tighter, for people who'd rather see more channels, more members and more
  * messages at once than have room to breathe. Brought over from Cunny's "IRC-style layout".
  *
- * - The rail narrows to icons only, and the channel and member lists get narrower, shorter rows
- *   with smaller pictures (styles/base/density.css).
- * - Messages lose their spacing: a small picture, the name and time on one line, the text right
- *   under it, and a run of messages from one person stays one group however long it runs
- *   (MessageTimeline.tsx).
+ * - The rail narrows, with smaller icons that keep their names; the channel and member lists get
+ *   narrower, one-line rows (styles/base/density.css).
+ * - Messages become IRC lines in the Ultimit mockup's style: a 24-hour time column down the left,
+ *   no picture, the name with the text running on after it, and a run of messages from one person
+ *   stays one group however long it runs (MessageTimeline.tsx).
  *
  * Kept per device in localStorage, like Effects (app/effects.ts): a big monitor and a laptop want
  * different things. Applied as `data-nu-density` on <html>, before the first render.
