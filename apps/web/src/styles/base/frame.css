@@ -611,7 +611,8 @@ html[data-nu-effects='safe'] .nu-profile-page__particle {
 }
 
 @media (max-width: 900px) {
-  .nu-shell .nu-demo-banner {
+  /* As specific as the ticker's rule above, which would otherwise keep it on the bar. */
+  .nu-shell[data-nu-role='app-shell'] .nu-demo-banner {
     bottom: calc(var(--nu-space-2) + env(safe-area-inset-bottom) + var(--nu-mobile-tabs-height, 60px));
   }
 

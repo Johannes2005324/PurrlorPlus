@@ -136,7 +136,8 @@ test('a creator sorts tracks into albums; visitors browse them, play on while mo
 
   // On a phone the sidebar's out of sight on the feed, so the player is a strip across the top.
   await page.setViewportSize({ width: 390, height: 844 });
-  await role(page, 'server-rail-global-feed').click();
+  // On a phone the rail gives way to the bottom tab bar (MobileTabBar.tsx).
+  await role(page, 'mobile-tab-feed').click();
   const strip = page.locator('.nu-music-player--mini');
   await expect(strip).toBeVisible();
   await expect(strip).toContainText('Headlights');

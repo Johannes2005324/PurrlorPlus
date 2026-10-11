@@ -1,50 +1,34 @@
-import { expect, test, devices, type Locator } from '@playwright/test';
-import { logIn, message, role } from './app';
-import { createSpaceWithChannel, createUser, sendText } from './matrix';
+import { expect, test } from '@playwright/test';
+import { logIn, role } from './app';
+import { createSpaceWithChannel, createUser } from './matrix';
 
 /**
- * The app on a phone (a touch screen, the one-pane layout): a message's actions open on a long
- * press, not left stuck open by a tap (there's no hover on a touch screen), and the page itself
- * never scrolls, so focusing the composer doesn't push the app up.
+ * The phone layout's bottom tab bar (features/servers/MobileTabBar.tsx), which stands in for the
+ * server rail there: You reaches your own profile, which a phone had no way to before, and Spaces
+ * lists every Space and opens one.
  */
-test.use({ ...devices['iPhone 13'], browserName: 'chromium' } as never);
 
-async function press(target: Locator, ms: number) {
-  const box = (await target.boundingBox())!;
-  const touch = { identifier: 1, clientX: box.x + box.width / 2, clientY: box.y + box.height / 2 };
-  await target.dispatchEvent('touchstart', { touches: [touch], changedTouches: [touch], targetTouches: [touch] });
-  await target.page().waitForTimeout(ms);
-  await target.dispatchEvent('touchend', { touches: [], changedTouches: [touch], targetTouches: [] });
-}
+test.use({ viewport: { width: 390, height: 844 } });
 
-const actionsVisible = (row: Locator) => row.locator('.nu-timeline__message-actions').evaluate((el) => getComputedStyle(el).opacity === '1');
-
-test('on a phone, a message’s actions open on a long press, and the page stays put', async ({ page }) => {
-  const [alice, bob] = await Promise.all([createUser('alice'), createUser('bob')]);
-  const { channelId, spaceName } = await createSpaceWithChannel(alice, [bob]);
-  await sendText(bob, channelId, 'hold me down');
-  await sendText(bob, channelId, 'just below');
+test('on a phone, the tab bar reaches your profile and your Spaces', async ({ page }) => {
+  const alice = await createUser('alice');
+  const { spaceName } = await createSpaceWithChannel(alice);
   await logIn(page, alice);
-  await role(page, 'server-rail-item').filter({ hasText: spaceName.slice(0, 1) }).last().tap();
-  await role(page, 'channel-list-item').filter({ hasText: 'general' }).first().tap();
-  const row = message(page, 'hold me down');
-  await expect(row).toBeVisible();
+  await expect(role(page, 'mobile-tabs')).toBeVisible();
+  await expect(role(page, 'server-rail')).toBeHidden();
 
-  await row.locator('.nu-timeline__message-text').tap();
-  await page.waitForTimeout(300);
-  expect(await actionsVisible(row)).toBe(false);
+  await role(page, 'mobile-tab-you').click();
+  await expect(role(page, 'profile-share')).toBeVisible();
+  await expect(role(page, 'mobile-tab-you')).toHaveAttribute('aria-current', 'page');
 
-  await press(row.locator('.nu-timeline__message-text'), 700);
-  await expect.poll(() => actionsVisible(row)).toBe(true);
-  await expect(role(row, 'timeline-copy-action')).toBeVisible();
+  await role(page, 'mobile-tab-spaces').click();
+  const tile = page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`);
+  await expect(tile).toBeVisible();
+  await tile.click();
+  await expect(role(page, 'server-rail')).toBeHidden();
+  await expect(page.locator('.nu-channel-list')).toBeVisible();
+  await expect(page.locator('.nu-channel-list').getByText('general', { exact: true })).toBeVisible();
 
-  // A touch anywhere else closes them.
-  await press(message(page, 'just below').locator('.nu-timeline__message-text'), 50);
-  await expect.poll(() => actionsVisible(row)).toBe(false);
-
-  // The page itself doesn't scroll when the composer takes focus.
-  await role(page, 'composer-input').tap();
-  await page.keyboard.type('hi');
-  expect(await page.evaluate(() => window.scrollY)).toBe(0);
-  await expect(role(page, 'main-pane-back')).toBeInViewport();
+  await role(page, 'mobile-tab-home').click();
+  await expect(role(page, 'mobile-tab-home')).toHaveAttribute('aria-current', 'page');
 });
