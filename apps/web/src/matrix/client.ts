@@ -6,6 +6,7 @@ import { secretStorageCallbacks } from './secretStorageCallbacks';
 import { setHomeServer } from './homeServer';
 import { installMemberNameFallback } from './displayName';
 import { installDecryptionRetry } from './decryptRetry';
+import { claimSession } from './sessionLock';
 
 // All four databases below (this app's two, plus the Rust crypto engine's own two — see
 // RUST_CRYPTO_DB_NAMES) are shared/global per browser, not scoped per account or device —
@@ -111,11 +112,42 @@ async function buildClient(session: Session): Promise<MatrixClient> {
   return mx;
 }
 
+// The client this tab runs, while it holds the session (sessionLock.ts), and who to tell when a
+// newer tab takes the session over.
+let lockedClient: MatrixClient | null = null;
+let movedElsewhere = false;
+const movedElsewhereListeners = new Set<() => void>();
+
+/** Calls `listener` when another tab of this browser takes the session over and this tab's client
+ *  has stopped. Returns a function that stops listening. */
+export function onSessionMovedElsewhere(listener: () => void): () => void {
+  movedElsewhereListeners.add(listener);
+  return () => movedElsewhereListeners.delete(listener);
+}
+
+function sessionMovedElsewhere(): void {
+  movedElsewhere = true;
+  lockedClient?.stopClient();
+  lockedClient = null;
+  for (const listener of movedElsewhereListeners) listener();
+}
+
 async function initClientOnce(session: Session): Promise<MatrixClient> {
+  // Before anything opens the stores: one tab at a time, or two copies of this device's crypto
+  // overwrite each other's keys. Also what lets the wipe below go through, with no other tab
+  // holding the databases open.
+  await claimSession(sessionMovedElsewhere);
   await wipeStoresIfPending();
 
   try {
-    return await buildClient(session);
+    const mx = await buildClient(session);
+    if (movedElsewhere) {
+      // Taken over while this tab was still starting: stop here, the way a running client would.
+      mx.stopClient();
+      return new Promise<MatrixClient>(() => {});
+    }
+    lockedClient = mx;
+    return mx;
   } catch (err) {
     if (!isCryptoStoreDeviceMismatch(err)) throw err;
     // Not a "your account is broken" error — the account and its real E2EE state are fine on the
@@ -181,7 +213,8 @@ export async function startClient(mx: MatrixClient): Promise<void> {
   // again started from rooms as they were up to five minutes before, and caught up from there.
   // Leaving the tab (switching away, closing it, a phone locking) writes it now.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') void mx.store.save(true).catch(() => undefined);
+    // Not once another tab has the session: its sync position is newer than this tab's.
+    if (document.visibilityState === 'hidden' && mx.clientRunning) void mx.store.save(true).catch(() => undefined);
   });
   // From here the service worker can sign this client's media requests (matrix/mediaWorker.ts).
   startMediaWorkerAuth(mx);

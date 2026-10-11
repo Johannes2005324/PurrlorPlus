@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ClientEvent, type MatrixClient, type SyncState, type SyncStateData } from 'matrix-js-sdk';
 import { clearSession, getSession } from '../matrix/session';
-import { initClient, startClient } from '../matrix/client';
+import { initClient, onSessionMovedElsewhere, startClient } from '../matrix/client';
 import { isDemoMode } from '../demo/demoMode';
 import { MatrixClientContext } from '../matrix/MatrixClientContext';
 import { LoginScreen } from './LoginScreen';
@@ -33,7 +33,8 @@ type BootState =
   | { phase: 'starting'; mx: MatrixClient }
   | { phase: 'awaiting-recovery-setup'; mx: MatrixClient; recoveryKey: string }
   | { phase: 'ready'; mx: MatrixClient }
-  | { phase: 'error'; message: string };
+  | { phase: 'error'; message: string }
+  | { phase: 'open-elsewhere' };
 
 export function App() {
   const [boot, setBoot] = useState<BootState>({ phase: 'checking-session' });
@@ -41,6 +42,9 @@ export function App() {
   // until they choose to sign in or join; signing in reloads the same address into the app.
   const [publicRoute] = useState(() => (isDemoMode() ? undefined : parsePublicRoute(window.location.pathname, window.location.search)));
   const [authView, setAuthView] = useState<'public' | 'login' | 'register'>(publicRoute ? 'public' : 'login');
+
+  // Another tab took the session (matrix/sessionLock.ts); this one's client has stopped.
+  useEffect(() => onSessionMovedElsewhere(() => setBoot({ phase: 'open-elsewhere' })), []);
 
   useEffect(() => {
     // Demo mode short-circuits the whole real boot: no stored session is read, no homeserver is
@@ -130,6 +134,20 @@ export function App() {
             }}
           >
             Sign out and start over
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (boot.phase === 'open-elsewhere') {
+    return (
+      <div className="nu-splash" data-nu-role="open-elsewhere">
+        <div className="nu-splash__error">
+          <img className="nu-splash__mascot nu-splash__mascot--still" src={MASCOT_URL} alt="" />
+          <p>Purrlor is open in another tab or window. It runs in one at a time, so your messages stay readable.</p>
+          <button type="button" className="nu-button nu-button--primary" onClick={() => window.location.reload()}>
+            Use Purrlor here
           </button>
         </div>
       </div>
