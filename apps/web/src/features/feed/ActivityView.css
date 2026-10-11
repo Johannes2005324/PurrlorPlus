@@ -1,3 +1,38 @@
+/* InvitesWaiting (features/invites): invites waiting for an answer, above everything else. */
+.nu-activity__invites {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: var(--nu-space-2);
+  width: 100%;
+  margin-bottom: var(--nu-space-3);
+  padding: var(--nu-space-3) var(--nu-space-4);
+  border: 1px solid var(--nu-color-accent);
+  border-radius: var(--nu-radius-lg);
+  background: color-mix(in srgb, var(--nu-color-accent) 10%, transparent);
+  color: var(--nu-color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nu-activity__invites:hover {
+  background: color-mix(in srgb, var(--nu-color-accent) 18%, transparent);
+}
+
+.nu-activity__invites-text {
+  flex: 1;
+  font-weight: 600;
+}
+
+.nu-activity__invites-action {
+  color: var(--nu-color-accent);
+  font-family: var(--nu-font-label);
+  font-size: var(--nu-font-size-xs);
+  letter-spacing: var(--nu-label-tracking, 0.12em);
+  text-transform: var(--nu-label-transform, uppercase);
+}
+
 /* All / Mentions, above the list — the header's tabs' look, left-aligned in the column. */
 .nu-activity__filters {
   display: flex;

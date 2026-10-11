@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { saveDensity, useIrcMode } from './density';
 import { readEffectsSetting, resolveEffects, saveEffectsSetting, saveTickerOn, useTickerOn, type EffectsSetting } from './effects';
 
 const CHOICES: { value: EffectsSetting; label: string; hint: string }[] = [
@@ -38,6 +39,24 @@ export function EffectsSettings() {
         <input type="checkbox" checked={tickerOn} onChange={(e) => saveTickerOn(e.target.checked)} />
         Notification ticker along the bottom
       </label>
+    </section>
+  );
+}
+
+/** Appearance → Layout: IRC mode (app/density.ts). On this device only, like Effects. */
+export function DensitySetting() {
+  const ircMode = useIrcMode();
+  return (
+    <section className="nu-field nu-effects-settings" data-nu-role="density-settings">
+      <span className="nu-effects-settings__title">Layout</span>
+      <label className="nu-field__checkbox-row" data-nu-role="irc-mode-setting">
+        <input type="checkbox" checked={ircMode} onChange={(e) => saveDensity(e.target.checked ? 'irc' : 'comfortable')} />
+        IRC mode
+      </label>
+      <p className="nu-field__hint">
+        Everything tighter: an icon-only rail, narrower channel and member lists, and messages packed close with the name and
+        time on one line. On this device only.
+      </p>
     </section>
   );
 }

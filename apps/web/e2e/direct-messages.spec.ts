@@ -90,7 +90,8 @@ test('a DM accepted from Invites opens that same conversation', async ({ browser
   const ctx = await setUp(browser);
   const dmId = await aliceStartsAndRevisits(ctx);
 
-  await role(ctx.bobPage, 'server-rail-invites').click();
+  await role(ctx.bobPage, 'server-rail-notifications').click();
+  await role(ctx.bobPage, 'activity-invites').click();
   await role(ctx.bobPage, 'invite-row').filter({ hasText: ctx.alice.localpart }).locator('[data-nu-role="invite-accept"]').click();
   await expect(role(ctx.bobPage, 'composer-input')).toBeVisible();
   await bobReadsAndReplies(ctx, dmId);

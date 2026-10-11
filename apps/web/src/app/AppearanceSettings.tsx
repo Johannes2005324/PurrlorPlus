@@ -1,6 +1,6 @@
 import { EmbedDisplaySetting } from './EmbedSettings';
 import { FeedBackgroundSetting } from './FeedBackgroundSetting';
-import { EffectsSettings } from './EffectsSettings';
+import { DensitySetting, EffectsSettings } from './EffectsSettings';
 import { useState, type ChangeEvent } from 'react';
 import { getStoredThemeCss, saveThemeCss } from './theme';
 import { FOXY_CSS } from './themes/foxy';
@@ -115,6 +115,7 @@ export function AppearanceSettings() {
   return (
     <div className="nu-appearance-settings" data-nu-role="appearance-settings">
       <EffectsSettings />
+      <DensitySetting />
       <EmbedDisplaySetting />
       <FeedBackgroundSetting />
       <p className="nu-field__hint">

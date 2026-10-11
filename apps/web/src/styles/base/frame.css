@@ -542,6 +542,7 @@ html[data-nu-effects='safe'] .nu-profile-page__particle {
       [data-nu-role='server-rail-global-feed'],
       [data-nu-role='server-rail-notifications'],
       .nu-rail-clock,
+      .nu-server-rail__spacer,
       .nu-server-rail__ver
     ) {
     display: none;

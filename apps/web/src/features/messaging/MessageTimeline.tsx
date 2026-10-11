@@ -12,6 +12,7 @@ import { readVoiceServerConfig } from '../../matrix/voice';
 import { findParentSpaceId } from '../../matrix/spaceChildren';
 import { RoleBadge } from '../../components/RoleBadge';
 import { pendingJumpTargetAtom } from '../../app/state/selection';
+import { useIrcMode } from '../../app/density';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import type { Emote } from '../../matrix/emotes';
 import { useHiddenLibraryImages } from '../../matrix/hooks/useEmoteLibrary';
@@ -393,6 +394,7 @@ const MessageRow = memo(function MessageRow({
   const [showReport, setShowReport] = useState(false);
   const senderId = event.getSender();
   const touchActions = useLongPressActions();
+  const ircMode = useIrcMode();
 
   return (
     <div
@@ -421,7 +423,7 @@ const MessageRow = memo(function MessageRow({
           data-nu-role="timeline-message-avatar"
           onClick={() => setShowProfile(true)}
         >
-          <Avatar name={senderName} mxcUrl={webhook ? webhook.avatarUrl ?? null : sender?.getMxcAvatarUrl()} size={40} />
+          <Avatar name={senderName} mxcUrl={webhook ? webhook.avatarUrl ?? null : sender?.getMxcAvatarUrl()} size={ircMode ? 24 : 40} />
         </button>
       )}
       <div className="nu-timeline__message-body">
@@ -771,6 +773,7 @@ const MessageRow = memo(function MessageRow({
  * GROUP_WINDOW_MS collapse into one visual group (MessageRow's `isGrouped`), Discord-style.
  */
 export function MessageTimeline({ roomId, onReply }: { roomId: string; onReply: (target: ReplyTarget) => void }) {
+  const ircMode = useIrcMode();
   const mx = useMatrixClient();
   const events = useRoomTimeline(roomId);
   const pinnedIds = usePinnedEventIds(roomId);
@@ -1186,7 +1189,8 @@ export function MessageTimeline({ roomId, onReply }: { roomId: string; onReply: 
             // tell, and so is one webhook posting under two names (a request's `username`).
             webhookSenderKey(prevEvent, webhookBotId) === webhookSenderKey(event, webhookBotId) &&
             !getReplyEventId(event) &&
-            event.getTs() - prevEvent.getTs() < GROUP_WINDOW_MS;
+            // IRC mode keeps one person's run of messages together however long it goes.
+            (ircMode || event.getTs() - prevEvent.getTs() < GROUP_WINDOW_MS);
           return (
             // A message you send starts as a local echo with a temporary ID, which changes when
             // the server confirms it; keyed on that ID, the row remounted then and flickered. The

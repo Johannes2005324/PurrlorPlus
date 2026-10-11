@@ -17,6 +17,7 @@ import { isUnread, markActivitySeen, type ActivityItem, type ActivityKind } from
 import { readPostContent } from '../../matrix/feed';
 import { useUserProfile } from '../../matrix/hooks/useUserProfile';
 import { findParentSpaceId } from '../../matrix/spaceChildren';
+import { InvitesWaiting } from '../invites/InvitesWaiting';
 import { formatPostTime } from './formatPostTime';
 import { useOpenPost } from './useOpenPost';
 import './ActivityView.css';
@@ -266,6 +267,7 @@ export function ActivityView() {
 
   return (
     <>
+      <InvitesWaiting />
       <div className="nu-activity__filters">
         <div className="nu-feed__tabs" role="tablist" aria-label="Show">
           {filterButton('all', 'All')}

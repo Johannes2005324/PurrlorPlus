@@ -1,0 +1,196 @@
+/*
+ * IRC mode (app/density.ts): the whole app tighter, after Cunny's "IRC-style layout". Loaded after
+ * the frame (main.tsx), so it wins over the frame and the component styles at the same
+ * specificity; a custom theme, loaded after this, still wins over it.
+ *
+ * Avatar sizes in the timeline and member list are set in markup (useIrcMode), as are the longer
+ * message groups (MessageTimeline.tsx).
+ */
+
+html[data-nu-density='irc'] {
+  --nu-width-channel-list: 200px;
+  --nu-width-member-list: 190px;
+  --nu-frame-gap: 6px;
+  --nu-font-size-message: 14px;
+  --nu-font-size-md: 13.5px;
+  --nu-font-size-lg: 15px;
+}
+
+/* ---- The rail: icons only (every item keeps its name as a tooltip), and shorter headers.
+   Desktop only: on a phone the rail is the Spaces screen and the tab bar (frame.css). ---- */
+
+@media (min-width: 901px) {
+  html[data-nu-density='irc'] {
+    --nu-width-server-rail: 56px;
+    --nu-height-header: 40px;
+    --nu-rail-label-display: none;
+  }
+
+  html[data-nu-density='irc'] .nu-server-rail {
+    padding-top: var(--nu-space-2);
+    padding-bottom: var(--nu-space-2);
+  }
+
+  html[data-nu-density='irc'] .nu-server-rail__emblem {
+    width: 30px;
+    height: 30px;
+  }
+
+  html[data-nu-density='irc'] .nu-server-rail__item {
+    min-height: 0;
+    padding: 5px 0;
+    gap: 0;
+  }
+
+  html[data-nu-density='irc'] .nu-server-rail__item--active::before {
+    height: calc(100% - 12px);
+  }
+
+  html[data-nu-density='irc'] .nu-server-rail__ver {
+    display: none;
+  }
+
+  html[data-nu-density='irc'] .nu-rail-clock__time {
+    font-size: 12px;
+  }
+}
+
+/* ---- Channel list: short rows, a slim Space card. ---- */
+
+html[data-nu-density='irc'] .nu-channel-list__header {
+  padding: 0 var(--nu-space-2) 0 var(--nu-space-3);
+}
+
+html[data-nu-density='irc'] .nu-space-card {
+  padding: 0 var(--nu-space-2) var(--nu-space-2);
+}
+
+html[data-nu-density='irc'] .nu-space-card__banner {
+  height: 56px;
+}
+
+html[data-nu-density='irc'] .nu-space-card__top {
+  padding-top: 30px;
+}
+
+html[data-nu-density='irc'] .nu-space-card__icon {
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+}
+
+html[data-nu-density='irc'] .nu-space-card__name {
+  font-size: 15px;
+}
+
+html[data-nu-density='irc'] .nu-channel-list__body {
+  padding: var(--nu-space-1);
+  gap: 0;
+}
+
+html[data-nu-density='irc'] .nu-channel-list__item {
+  min-height: 24px;
+  padding: 1px var(--nu-space-1);
+  gap: var(--nu-space-1);
+  font-size: var(--nu-font-size-sm);
+}
+
+html[data-nu-density='irc'] .nu-channel-list__item-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+html[data-nu-density='irc'] .nu-channel-list__category-header,
+html[data-nu-density='irc'] .nu-channel-list__section-header {
+  padding: 2px var(--nu-space-1);
+  font-size: var(--nu-font-size-xs);
+}
+
+/* ---- Member list: one line per person. ---- */
+
+html[data-nu-density='irc'] .nu-member-list__header {
+  padding: 0 var(--nu-space-1) 0 var(--nu-space-3);
+}
+
+html[data-nu-density='irc'] .nu-member-list__body {
+  padding: var(--nu-space-1);
+  gap: var(--nu-space-2);
+}
+
+html[data-nu-density='irc'] .nu-member-list__group-label {
+  padding: 2px var(--nu-space-1);
+  font-size: var(--nu-font-size-xs);
+}
+
+html[data-nu-density='irc'] .nu-member-list__item {
+  gap: var(--nu-space-2);
+  padding: 1px var(--nu-space-1);
+}
+
+/* ---- The timeline: a small picture, name and time on one line, the text right under it. ---- */
+
+html[data-nu-density='irc'] .nu-timeline {
+  padding: var(--nu-space-2) var(--nu-space-2) var(--nu-space-3);
+}
+
+html[data-nu-density='irc'] .nu-timeline__message {
+  gap: var(--nu-space-2);
+  padding: 1px var(--nu-space-2);
+  margin: var(--nu-space-1) calc(var(--nu-space-2) * -1) 0;
+  line-height: 1.35;
+}
+
+html[data-nu-density='irc'] .nu-timeline__message--grouped {
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+html[data-nu-density='irc'] .nu-timeline__message-gutter {
+  width: 24px;
+  padding-top: 1px;
+}
+
+html[data-nu-density='irc'] .nu-timeline__message-hover-time {
+  font-size: 9px;
+}
+
+html[data-nu-density='irc'] .nu-timeline__message-avatar {
+  padding-top: 2px;
+}
+
+html[data-nu-density='irc'] .nu-timeline__message-meta {
+  gap: var(--nu-space-1);
+}
+
+html[data-nu-density='irc'] .nu-timeline__divider {
+  margin: var(--nu-space-3) 0 var(--nu-space-1);
+}
+
+html[data-nu-density='irc'] .nu-timeline__welcome {
+  padding: var(--nu-space-4) 0 var(--nu-space-2);
+}
+
+/* ---- Composer and the channel header. ---- */
+
+html[data-nu-density='irc'] .nu-composer {
+  margin: 0 var(--nu-space-2) var(--nu-space-2);
+  padding: 2px;
+}
+
+html[data-nu-density='irc'] .nu-composer__input {
+  padding: 4px var(--nu-space-2);
+}
+
+html[data-nu-density='irc'] .nu-main-pane__header {
+  padding: 0 var(--nu-space-2) 0 var(--nu-space-3);
+}
+
+html[data-nu-density='irc'] .nu-main-pane__header-name {
+  font-size: 14px;
+}
+
+html[data-nu-density='irc'] .nu-main-pane__header-action {
+  height: 28px;
+  padding: 0 var(--nu-space-2);
+}

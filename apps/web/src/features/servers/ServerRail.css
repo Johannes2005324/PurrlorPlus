@@ -210,10 +210,11 @@
   background: var(--nu-color-border);
 }
 
-/* The Spaces: the part of the rail that grows and scrolls. */
+/* The Spaces: as tall as they need, then scrolling once the rail runs out of room. Feed, Notify,
+   Discover and Create follow straight after them, as on the mockup's rail. */
 .nu-server-rail__list {
   position: relative;
-  flex: 1 1 0;
+  flex: 0 1 auto;
   min-height: 0;
   width: 100%;
   display: flex;
@@ -229,6 +230,12 @@
 
 .nu-server-rail__list::-webkit-scrollbar {
   display: none;
+}
+
+/* What's left of the rail's height, below Create: nothing once the Spaces need it. */
+.nu-server-rail__spacer {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 /* The version line, running up the rail's foot. First to give way when the rail is short. */

@@ -12,7 +12,9 @@ import {
 } from '../../app/state/selection';
 import { Avatar } from '../../components/Avatar';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
+import { useInvites } from '../../matrix/hooks/useInvites';
 import { useOwnProfile } from '../../matrix/hooks/useOwnProfile';
+import { notifyAria } from '../invites/notifyAria';
 import { useSpacelessRooms } from '../../matrix/hooks/useSpacelessRooms';
 import { useDirectMessageUnreads, useUnreadSummary } from '../../matrix/hooks/useUnreadCounts';
 import { describeRoomLevel } from '../../matrix/notificationSettings';
@@ -61,6 +63,7 @@ export function MobileTabBar() {
   const setOpenPost = useSetAtom(openPostAtom);
   const openSocial = useOpenSocial();
   const unreadNotifications = useAtomValue(unreadActivityCountAtom);
+  const invites = useInvites();
   // Home's count, worked out as the rail's Home tile does (ServerRail.tsx).
   const spacelessRooms = useSpacelessRooms();
   const dmUnread = useUnreadSummary(spacelessRooms);
@@ -107,10 +110,10 @@ export function MobileTabBar() {
     {
       key: 'notify',
       label: 'Notify',
-      aria: unreadNotifications > 0 ? `Notifications, ${unreadNotifications} new` : 'Notifications',
+      aria: notifyAria(unreadNotifications, invites.length),
       active: onNotify,
       icon: <Glyph name="notify" />,
-      count: unreadNotifications,
+      count: unreadNotifications + invites.length,
       go: () => {
         setSpacesOpen(false);
         openSocial('notifications');

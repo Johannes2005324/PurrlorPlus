@@ -12,7 +12,6 @@ import {
 } from '../../app/state/selection';
 import { UnreadBadge } from '../../components/UnreadBadge';
 import { DiscoverModal } from '../discover/DiscoverModal';
-import { InvitesModal } from '../invites/InvitesModal';
 import { useOpenSocial } from '../feed/useOpenSocial';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import { useMediaUrl } from '../../matrix/hooks/useMediaUrl';
@@ -22,14 +21,13 @@ import { useSpacelessRooms } from '../../matrix/hooks/useSpacelessRooms';
 import { useSpaces } from '../../matrix/hooks/useSpaces';
 import { useAnyRoomHasUnread, useDirectMessageUnreads, useUnreadSummary } from '../../matrix/hooks/useUnreadCounts';
 import { describeRoomLevel } from '../../matrix/notificationSettings';
-import { classifyInvite, parentSpaceOf } from '../../matrix/invites';
-import { getParentSpace } from '../../matrix/voice';
 import { CreateSpaceModal } from './CreateSpaceModal';
 import { locateInList, usePointerDrag } from '../../components/usePointerDrag';
 import { moveSpace } from '../../matrix/spaceOrder';
 import { RailClock } from '../../app/StatusClock';
 import { mobileSpacesOpenAtom } from '../../app/state/mobile';
 import { nameHue } from '../../components/Avatar';
+import { notifyAria } from '../invites/notifyAria';
 import './ServerRail.css';
 
 /** The selected tile's cat ears — drawn on every tile, shown only on the active one (CSS),
@@ -50,7 +48,6 @@ const RAIL_ICONS = {
   home: 'M3 11l9-7 9 7v9H3zM9 20v-6h6v6',
   feed: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9',
   notify: 'M6 16V10a6 6 0 0 1 12 0v6l2 2H4zM10 21h4',
-  invites: 'M3 6h18v12H3zM3 6l9 7 9-7',
   discover: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM15.5 8.5l-2 5-5 2 2-5z',
   create: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 8.5v7M8.5 12h7',
 } as const;
@@ -215,11 +212,12 @@ export function ServerRail() {
   const unreadNotifications = useAtomValue(unreadActivityCountAtom);
   const openSocial = useOpenSocial();
   const onNotifications = globalFeedOpen && socialView === 'notifications';
+  // Notify counts invites too: they're answered from the top of Notifications (InvitesWaiting).
+  const notifyCount = unreadNotifications + invites.length;
   const setProfileUserId = useSetAtom(profileUserIdAtom);
   const setSpaceView = useSetAtom(selectedSpaceViewAtom);
   const [showCreateSpace, setShowCreateSpace] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
-  const [showInvites, setShowInvites] = useState(false);
   const spacelessRooms = useSpacelessRooms();
   const dmUnread = useUnreadSummary(spacelessRooms);
   // Every unread message in a DM counts, as a mention does in a channel (useDirectMessageUnreads);
@@ -248,21 +246,6 @@ export function ServerRail() {
     setSpaceView(null);
     setSelectedSpaceId(null);
     setSelectedRoomId(roomId);
-  };
-
-  const handleInviteAccepted = (room: Room) => {
-    setMobileSpacesOpen(false);
-    const kind = classifyInvite(mx, room);
-    if (kind === 'space') {
-      selectSpace(room.roomId);
-    } else if (kind === 'channel') {
-      const parentId = getParentSpace(mx, room)?.roomId ?? parentSpaceOf(room)?.roomId ?? null;
-      setSelectedSpaceId(parentId);
-      setSelectedRoomId(room.roomId);
-    } else {
-      setSelectedSpaceId(null);
-      setSelectedRoomId(room.roomId);
-    }
   };
 
   return (
@@ -360,36 +343,18 @@ export function ServerRail() {
         }
         data-nu-role="server-rail-notifications"
         title="Notifications"
-        aria-label={unreadNotifications > 0 ? `Notifications, ${unreadNotifications} new` : 'Notifications'}
+        aria-label={notifyAria(unreadNotifications, invites.length)}
         aria-current={onNotifications ? 'page' : undefined}
         onClick={() => openSocial('notifications')}
       >
         <span className="nu-server-rail__icon">
           <RailIcon name="notify" />
           <span className="nu-server-rail__item-badge">
-            <UnreadBadge total={unreadNotifications} highlight={unreadNotifications} />
+            <UnreadBadge total={notifyCount} highlight={notifyCount} />
           </span>
         </span>
         <span className="nu-server-rail__label" aria-hidden="true">
           Notify
-        </span>
-      </button>
-      <button
-        type="button"
-        className="nu-server-rail__item nu-server-rail__item--invites"
-        data-nu-role="server-rail-invites"
-        title="Invites"
-        aria-label="Invites"
-        onClick={() => setShowInvites(true)}
-      >
-        <span className="nu-server-rail__icon">
-          <RailIcon name="invites" />
-          <span className="nu-server-rail__item-badge">
-            <UnreadBadge total={invites.length} highlight={invites.length} />
-          </span>
-        </span>
-        <span className="nu-server-rail__label" aria-hidden="true">
-          Invites
         </span>
       </button>
       <button
@@ -422,6 +387,8 @@ export function ServerRail() {
           Create
         </span>
       </button>
+      {/* The rest of the rail's height, between Create and the clock: the Spaces only take what they need. */}
+      <div className="nu-server-rail__spacer" aria-hidden="true" />
       <RailClock />
       {/* The mockup's version line, running up the rail: the app and the server you're on. */}
       <div className="nu-server-rail__ver" aria-hidden="true">
@@ -440,15 +407,6 @@ export function ServerRail() {
         <DiscoverModal
           onClose={() => setShowDiscover(false)}
           onJoinedSpace={(roomId) => selectSpace(roomId)}
-        />
-      )}
-      {showInvites && (
-        <InvitesModal
-          onClose={() => setShowInvites(false)}
-          onAccepted={(room) => {
-            setShowInvites(false);
-            handleInviteAccepted(room);
-          }}
         />
       )}
     </nav>

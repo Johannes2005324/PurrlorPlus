@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import { UserEvent, type RoomMember } from 'matrix-js-sdk';
 import { selectedRoomIdAtom } from '../../app/state/selection';
+import { useIrcMode } from '../../app/density';
 import { mobileMemberListOpenAtom } from '../../app/state/mobile';
 import { Avatar } from '../../components/Avatar';
 import { Icon } from '../../components/Icon';
@@ -82,6 +83,7 @@ function MemberRow({
 }) {
   const role = roleFor(member.powerLevel, roles);
   const roleId = role.custom ? 'custom' : role.id;
+  const ircMode = useIrcMode();
   const offline = !isHere(presenceInfo);
   return (
     <button
@@ -93,7 +95,7 @@ function MemberRow({
       title={presenceInfo.statusMsg || member.userId}
       onClick={onOpenProfile}
     >
-      <Avatar name={member.name} mxcUrl={member.getMxcAvatarUrl()} size={34} presence={presenceInfo.presence ?? 'offline'} />
+      <Avatar name={member.name} mxcUrl={member.getMxcAvatarUrl()} size={ircMode ? 22 : 34} presence={presenceInfo.presence ?? 'offline'} />
       <span className="nu-member-list__item-text">
         <span className="nu-member-list__item-name-row">
           <span className="nu-member-list__item-name" style={role.color ? { color: role.color } : undefined}>
