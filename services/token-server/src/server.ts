@@ -8,7 +8,7 @@ import { checkMembership, getBotUserId, mayViewParticipants } from './membership
 import { grantsForPowerLevel } from './grants.js';
 import { livekitRoomName } from './livekitRoomName.js';
 import { handleWebhook } from './webhooks.js';
-import { controlDeps, publicWebRouter } from './publicWebRoutes.js';
+import { controlDeps, publicWebRouter, serverName } from './publicWebRoutes.js';
 import { embedsRouter } from './embedRoutes.js';
 import { adminStore } from './adminStore.js';
 import { controlApp, listenOnControlSocket } from './controlServer.js';
@@ -81,6 +81,16 @@ app.get('/api/livekit/config', async (_req, res) => {
   }
 });
 
+/** Who's asking. A login on this deployment's own homeserver is checked there directly, as the other
+ *  routes do (publicWebRoutes.ts), rather than through its public federation address. */
+async function voiceCaller(openIdToken: unknown): Promise<string> {
+  const ownServer = await serverName().catch(() => '');
+  return validateOpenIdToken(openIdToken as Parameters<typeof validateOpenIdToken>[0], {
+    serverName: ownServer,
+    baseUrl: process.env.MATRIX_HOMESERVER_URL ?? '',
+  });
+}
+
 app.post('/api/livekit/token', async (req, res) => {
   const openIdToken = req.body?.openid_token;
   const roomId = req.body?.room_id;
@@ -91,7 +101,7 @@ app.post('/api/livekit/token', async (req, res) => {
 
   let userId: string;
   try {
-    userId = await validateOpenIdToken(openIdToken);
+    userId = await voiceCaller(openIdToken);
   } catch (err) {
     // An expired or unconfirmed login is the caller's, not a fault here: a warning, so it isn't
     // counted in `purrlor errors` or the alerts.
@@ -157,7 +167,7 @@ app.post('/api/livekit/token', async (req, res) => {
 // more reliable to just ask for than to keep a hand-rolled cache in sync).
 const roomService = new RoomServiceClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
 
-type VoiceParticipant = { identity: string; micMuted: boolean; deafened: boolean };
+type VoiceParticipant = { identity: string; micMuted: boolean; deafened: boolean; joinedAt: number };
 
 /** One request can ask about this many channels at most — the channel list asks about one. */
 const MAX_PARTICIPANT_ROOMS = 50;
@@ -191,7 +201,7 @@ app.post('/api/livekit/rooms/participants', async (req, res) => {
 
   let userId: string;
   try {
-    userId = await validateOpenIdToken(openIdToken);
+    userId = await voiceCaller(openIdToken);
   } catch {
     res.status(401).json({ error: 'Authentication failed' });
     return;
@@ -212,6 +222,8 @@ app.post('/api/livekit/rooms/participants', async (req, res) => {
             // no built-in "deafened" concept (muting your own playback of others isn't
             // something the server can see), see VoiceChannelPanel.tsx's toggleDeafen.
             deafened: p.attributes.deafened === 'true',
+            // So the channel list can show people in the order they joined; LiveKit's own order isn't fixed.
+            joinedAt: Number(p.joinedAtMs) || Number(p.joinedAt) * 1000,
           };
         });
       } catch {

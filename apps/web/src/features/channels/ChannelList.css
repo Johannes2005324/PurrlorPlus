@@ -543,6 +543,24 @@
   color: var(--nu-color-danger);
 }
 
+.nu-channel-list__occupant-avatar {
+  flex: none;
+  display: inline-flex;
+  padding: 2px;
+  margin: -2px;
+  border-radius: var(--nu-radius-avatar, var(--nu-radius-full));
+  transition: box-shadow 0.12s ease;
+}
+
+/* Talking, in the call you're in (callPresence.ts): a ring round the avatar, the name brighter. */
+.nu-channel-list__occupant--speaking {
+  color: var(--nu-color-text-primary);
+}
+
+.nu-channel-list__occupant--speaking .nu-channel-list__occupant-avatar {
+  box-shadow: 0 0 0 2px var(--nu-color-success);
+}
+
 /* ---- Active call bar ---- */
 
 .nu-channel-list__active-call {

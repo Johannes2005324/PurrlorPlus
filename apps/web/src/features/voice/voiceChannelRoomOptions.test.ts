@@ -30,7 +30,7 @@ describe('what a screen share captures', () => {
       const options = screenShareCaptureOptions(includeSystemAudio);
       expect(options.resolution).toEqual({ width: 1920, height: 1080, frameRate: 60 });
       expect(options.contentHint).toBe('motion');
-      expect(options.audio).toMatchObject({ echoCancellation: false, noiseSuppression: false, autoGainControl: false });
+      expect(options.audio).toMatchObject({ echoCancellation: false, noiseSuppression: false, autoGainControl: false, restrictOwnAudio: true });
     }
   });
 

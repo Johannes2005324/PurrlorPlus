@@ -11,6 +11,7 @@ import { ScreenShareProvider } from './ScreenShareProvider';
 import { WatchTogetherProvider } from './WatchTogetherProvider';
 import { ApplyAudioSettings } from './ApplyAudioSettings';
 import { CallHotkeys } from './CallHotkeys';
+import { CallPresenceBridge } from './CallPresenceBridge';
 import { audioCaptureOptions, deviceIdOrDefault, readAudioSettings } from './audioSettings';
 
 // Split out of VoiceCallSession.tsx so @livekit/components-react (and livekit-client underneath
@@ -99,6 +100,7 @@ export default function ActiveVoiceCall({ room, children }: { room: MatrixRoom; 
     >
       <RoomAudioRenderer muted={deafened} />
       <ApplyAudioSettings />
+      <CallPresenceBridge roomId={room.roomId} />
       <VoiceCallContext.Provider value={ctxValue}>
         <CallHotkeys />
         <WatchTogetherProvider>

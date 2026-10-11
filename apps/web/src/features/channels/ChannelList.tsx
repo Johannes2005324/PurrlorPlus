@@ -47,6 +47,7 @@ import { listChildRooms, useSpaceRooms } from '../../matrix/hooks/useSpaceRooms'
 import { useSpacelessRooms } from '../../matrix/hooks/useSpacelessRooms';
 import { useSpaceVoiceServer } from '../../matrix/hooks/useSpaceVoiceServer';
 import { useVoiceChannelParticipants } from '../../matrix/hooks/useVoiceChannelParticipants';
+import { byJoinOrder, liveCallAtom } from '../voice/callPresence';
 import type { VoiceServerConfig } from '../../matrix/voice';
 import { autoJoinSpaceChannels } from '../../matrix/autoJoin';
 import { joinPublicRoom } from '../../matrix/directory';
@@ -84,20 +85,32 @@ function useDmCounterpart(room: Room, isDirectMessage: boolean): string | undefi
 }
 
 /** Who's actually connected to a voice channel right now, shown as a short indented list
- *  under its row — the occupancy indicator the README long flagged as deferred. */
+ *  under its row — the occupancy indicator the README long flagged as deferred. In the order they
+ *  joined; for the call you're in, live from the call itself, with whoever's talking lit up. */
 function VoiceChannelOccupants({ room, voiceServer }: { room: Room; voiceServer: VoiceServerConfig | undefined }) {
-  const participants = useVoiceChannelParticipants(room.roomId, voiceServer);
+  const polled = useVoiceChannelParticipants(room.roomId, voiceServer);
+  const liveCall = useAtomValue(liveCallAtom);
+  const participants = byJoinOrder(liveCall?.roomId === room.roomId ? liveCall.people : polled);
 
   if (participants.length === 0) return null;
 
   return (
     <ul className="nu-channel-list__occupants" data-nu-role="channel-list-occupants">
-      {participants.map(({ identity, micMuted, deafened }) => {
+      {participants.map((p) => {
+        const { identity, micMuted, deafened } = p;
+        const speaking = 'speaking' in p && !!p.speaking;
         const member = room.getMember(identity);
         const name = member?.name || identity;
         return (
-          <li key={identity} className="nu-channel-list__occupant">
-            <Avatar name={name} mxcUrl={member?.getMxcAvatarUrl() ?? null} size={16} />
+          <li
+            key={identity}
+            className={speaking ? 'nu-channel-list__occupant nu-channel-list__occupant--speaking' : 'nu-channel-list__occupant'}
+            data-nu-role="channel-list-occupant"
+            data-nu-speaking={speaking || undefined}
+          >
+            <span className="nu-channel-list__occupant-avatar">
+              <Avatar name={name} mxcUrl={member?.getMxcAvatarUrl() ?? null} size={16} />
+            </span>
             <span className="nu-channel-list__occupant-name">{name}</span>
             {micMuted && (
               <span className="nu-channel-list__occupant-icon" aria-label="Muted" title="Muted">

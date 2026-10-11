@@ -32,7 +32,7 @@ services:
       - /var/lib/continuwuity
 
   # Its bot account (e2e-bot) is registered by bootstrap.mjs; it logs in on its first request.
-  # LiveKit isn't running: the tests don't make calls, and the key pair only has to be present.
+  # Calls go through the LiveKit below (voice.spec.ts), with the same key pair.
   token-server:
     build:
       context: ../../..
@@ -43,6 +43,7 @@ services:
       PORT: 3001
       LIVEKIT_API_KEY: e2e-key
       LIVEKIT_API_SECRET: e2e-secret-that-is-long-enough-for-livekit
+      LIVEKIT_URL: http://livekit:7880
       ALLOWED_ORIGINS: '*'
       # Test only: link embeds may fetch the token server itself (its link cards), so a test can embed
       # a page without the internet. Deployed, the resolver never reaches a local name (embedGuard.ts).
@@ -52,3 +53,15 @@ services:
       MATRIX_BOT_PASSWORD: e2e-bot-password
     depends_on:
       - matrix
+
+  # Voice for voice.spec.ts: the LiveKit the deployment runs (deploy/docker-compose.yml), in dev mode.
+  # The browser reaches it on 127.0.0.1, so that's the address it hands out for media.
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --dev --bind 0.0.0.0 --node-ip 127.0.0.1
+    ports:
+      - '127.0.0.1:7880:7880'
+      - '127.0.0.1:7881:7881'
+      - '127.0.0.1:7882:7882/udp'
+    environment:
+      LIVEKIT_KEYS: 'e2e-key: e2e-secret-that-is-long-enough-for-livekit'

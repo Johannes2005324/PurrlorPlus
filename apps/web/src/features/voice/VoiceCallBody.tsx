@@ -22,6 +22,7 @@ import { personVolume, setPersonVolume } from './callVolume';
 import { toggleDeafen, toggleMute } from './callActions';
 import { readIncludeSystemAudio, saveIncludeSystemAudio, setScreenShareJitterBufferTarget, startScreenShare } from './voiceChannelRoomOptions';
 import { useCallScreenShare } from './ScreenShareProvider';
+import { byJoinOrder } from './callPresence';
 import { useSharedWatchTogether } from './watchTogetherContext';
 import { sessionMode, type WatchTogetherMode } from './watchTogether';
 import { WatchTogetherModal } from './WatchTogetherModal';
@@ -186,7 +187,8 @@ function CallControl({
  *  only ever needed once a call is really connected. */
 export default function VoiceCallBody({ room, onLeave }: { room: MatrixRoom; onLeave: () => void }) {
   useParticipantSounds();
-  const participants = useParticipants();
+  // Who joined first, first, for everyone in the call (callPresence.ts); LiveKit puts you first.
+  const participants = byJoinOrder(useParticipants().map((p) => ({ identity: p.identity, joinedAt: p.joinedAt?.getTime(), p }))).map(({ p }) => p);
   const speaking = useSpeakingParticipants();
   const speakingIds = new Set(speaking.map((p) => p.identity));
   const { localParticipant, isMicrophoneEnabled, isScreenShareEnabled, isCameraEnabled } = useLocalParticipant();

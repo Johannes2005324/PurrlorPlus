@@ -20,11 +20,20 @@ export const SCREEN_SHARE_CODEC = 'h264' as const;
  *  input processing, not appropriate for system audio (music, game sound) — explicitly off so
  *  shared audio doesn't get run through voice-call DSP built for a microphone. The browser's own
  *  picker still lets the user leave the checkbox unticked per-share; this only makes the option
- *  exist at all. */
+ *  exist at all.
+ *
+ *  `restrictOwnAudio` keeps Purrlor's own sound out of what's shared. Without it, a share that
+ *  carries the computer's sound (and a window's, which on Windows is the computer's) also
+ *  carried the call itself: everyone heard each other back through the share, and the share's
+ *  sound was mixed with the voices. The browser takes out what this page plays (the call, music,
+ *  notification sounds) and keeps the rest; one that can't ignores it (Chrome has it, Firefox
+ *  and Safari not yet). */
 export const SCREEN_SHARE_AUDIO_OPTIONS: AudioCaptureOptions = {
   echoCancellation: false,
   noiseSuppression: false,
   autoGainControl: false,
+  // Not in LiveKit's type yet; it passes the audio options to getDisplayMedia as they are.
+  ...({ restrictOwnAudio: true } as object),
 };
 
 /**

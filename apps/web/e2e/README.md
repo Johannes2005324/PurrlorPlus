@@ -1,7 +1,7 @@
 # End-to-end tests
 
 The production build in Chromium, against a real homeserver: a fresh Continuwuity in Docker with
-no other server to federate with, plus the token server built from this checkout (for webhooks and the online count). Each test registers its own users and makes its own rooms through the client-server
+no other server to federate with, plus the token server built from this checkout (for webhooks and the online count) and a LiveKit in dev mode (for calls). Each test registers its own users and makes its own rooms through the client-server
 API (`matrix.ts`), drives the app through its `data-nu-role` attributes (`app.ts`), then checks what
 actually reached the server. Tests share nothing, so they run in parallel and can be rerun against
 the same server.
@@ -15,6 +15,7 @@ the same server.
 | `moderation.spec.ts` | A report reaching the Space's moderators, who delete the message from the queue; automod refusing a blocked word in Purrlor and deleting one sent from elsewhere |
 | `calendar.spec.ts` | A moderator adds an event and a member RSVPs (kept in their member event), an event reminder, and a message reminder from "Remind me" to opening it |
 | `webhooks.spec.ts` | A webhook posting through a real token server under its own name (APP), wrong tokens refused, deleting it, and a person unable to pose as one |
+| `voice.spec.ts` | A real call through LiveKit, with Chrome's fake microphone: three people listed in the order they joined, the same on each of their screens and in the channel list (live for the call you're in, polled through the token server for someone outside it); whoever is talking is lit up in both, and the order holds as the call goes on |
 | `discover.spec.ts` | Discover lists a public Space but not its public channel, and joining it puts it on the server rail |
 | `online.spec.ts` | The global feed's "N online", which goes up when another account opens the app, also shown signed out; a ping without a real account's token is refused |
 | `encryption-settings.spec.ts` | New private channels and DMs are created encrypted, public channels aren't, and turning encryption on for an existing channel warns first |
@@ -46,7 +47,7 @@ From `apps/web`, with Docker running:
 
 ```sh
 npx playwright install chromium   # once
-npm run e2e:homeserver            # a fresh server at 127.0.0.1:6167 and token server at :6168
+npm run e2e:homeserver            # a fresh server at 127.0.0.1:6167, token server at :6168, LiveKit at :7880
 npm run build
 npm run e2e
 docker compose -f e2e/docker-compose.yml down

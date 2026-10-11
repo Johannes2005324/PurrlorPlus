@@ -12,6 +12,8 @@ export type VoiceChannelParticipant = {
   /** Broadcast via the participant's own LiveKit attributes — see
    *  VoiceChannelPanel.tsx's toggleDeafen; there's no server-side signal for this. */
   deafened: boolean;
+  /** When they joined, in ms; absent from a token server older than this field. */
+  joinedAt?: number;
 };
 
 /**
