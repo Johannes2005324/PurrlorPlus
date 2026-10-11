@@ -166,6 +166,14 @@ export function musicAlbumCount(page: ProfilePage): number {
   return page.blocks.reduce((count, block) => count + (block.type === 'music' ? block.albums.length : 0), 0);
 }
 
+/** Pieces across the page's gallery blocks, against LIMITS.galleryPieces. */
+export function galleryPieceCount(page: ProfilePage): number {
+  return page.blocks.reduce(
+    (count, block) => count + (block.type === 'gallery' ? block.albums.reduce((sum, album) => sum + album.pieces.length, 0) : 0),
+    0
+  );
+}
+
 /** Images on the page now, the background included, against LIMITS.images. */
 export function imageCount(page: ProfilePage): number {
   const background = page.style.background.kind === 'image' ? 1 : 0;

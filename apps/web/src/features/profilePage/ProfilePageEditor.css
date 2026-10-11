@@ -258,6 +258,49 @@
   border-radius: var(--nu-radius-sm);
 }
 
+/* A gallery piece, folded to its thumbnail and title until opened. */
+.nu-page-editor__piece {
+  padding: var(--nu-space-2);
+}
+
+.nu-page-editor__piece:not([open]) {
+  gap: 0;
+}
+
+.nu-page-editor__piece-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--nu-space-2);
+  cursor: pointer;
+  list-style: none;
+}
+
+.nu-page-editor__piece-summary::-webkit-details-marker {
+  display: none;
+}
+
+.nu-page-editor__piece-summary .nu-page-editor__thumb {
+  width: 40px;
+  height: 40px;
+}
+
+.nu-page-editor__piece-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nu-page-editor__piece-summary::after {
+  content: '▸';
+  color: var(--nu-color-text-muted);
+}
+
+.nu-page-editor__piece[open] > .nu-page-editor__piece-summary::after {
+  content: '▾';
+}
+
 .nu-page-editor__thumbs {
   display: flex;
   flex-wrap: wrap;

@@ -6,6 +6,7 @@ import {
   canAddType,
   columnBlocks,
   findEmote,
+  galleryPieceCount,
   imageCount,
   moveBlock,
   readabilityProblems,
@@ -74,6 +75,19 @@ describe('editorModel', () => {
       ],
     };
     expect(imageCount(page)).toBe(2);
+  });
+
+  it('counts gallery pieces across every gallery block, since the limit is page-wide', () => {
+    const piece = (n: number) => ({ url: `mxc://s/${n}`, tags: [], rating: 'general' as const });
+    const page: ProfilePage = {
+      ...emptyProfilePage(),
+      blocks: [
+        { id: 'a', type: 'gallery', ratings: false, albums: [{ id: 'x', title: 'X', pieces: [piece(1), piece(2)] }, { id: 'y', title: 'Y', pieces: [piece(3)] }] },
+        { id: 'b', type: 'gallery', ratings: false, albums: [{ id: 'z', title: 'Z', pieces: [piece(4)] }] },
+        { id: 'c', type: 'image', url: 'mxc://s/a' },
+      ],
+    };
+    expect(galleryPieceCount(page)).toBe(4);
   });
 
   it('works out text formatting from the author’s emotes', () => {

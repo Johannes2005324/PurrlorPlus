@@ -41,6 +41,8 @@ type EditorProps<T extends PageBlock['type']> = {
   tracksLeft: number;
   /** Albums the page can still take, across all its music blocks. */
   musicAlbumsLeft: number;
+  /** Pieces the page can still take, across all its gallery blocks. */
+  galleryPiecesLeft: number;
 };
 
 function TitleField({ value, onChange }: { value?: string; onChange: (title: string | undefined) => void }) {
@@ -221,6 +223,9 @@ function ImageEditor({ block, onChange, imagesLeft }: EditorProps<'image'>) {
           disabled={!block.url && imagesLeft < 1}
           onUploaded={([url]) => onChange({ ...block, url })}
         />
+        {!block.url && imagesLeft < 1 && (
+          <span className="nu-field__hint">Your page has all {LIMITS.images} images it can hold, the background included. Remove one to add another.</span>
+        )}
       </div>
       <label className="nu-field">
         Caption (optional)
@@ -432,10 +437,15 @@ function PieceEditor({
   onChange: (piece: ArtPiece) => void;
   onRemove: () => void;
 }) {
+  // Folded down to a thumbnail and its title, so an album of pieces doesn't push "Add pieces…" and the next album a long scroll away.
   return (
-    <fieldset className="nu-page-editor__subitem">
-      <div className="nu-page-editor__row">
+    <details className="nu-page-editor__subitem nu-page-editor__piece" data-nu-role="page-editor-gallery-piece">
+      <summary className="nu-page-editor__piece-summary">
         <ImageThumb mxc={piece.url} />
+        <span className="nu-page-editor__piece-name">{piece.title || 'Untitled piece'}</span>
+        {piece.rating === 'mature' && <span className="nu-field__hint">Mature</span>}
+      </summary>
+      <div className="nu-page-editor__row">
         <label className="nu-field">
           Title (optional)
           <input className="nu-field__input" value={piece.title ?? ''} maxLength={LIMITS.title} onChange={(evt) => onChange({ ...piece, title: evt.target.value || undefined })} />
@@ -472,12 +482,13 @@ function PieceEditor({
       <button type="button" className="nu-page-editor__inline-button" onClick={onRemove}>
         Remove this piece
       </button>
-    </fieldset>
+    </details>
   );
 }
 
-function GalleryEditor({ block, onChange }: EditorProps<'gallery'>) {
-  const total = block.albums.reduce((count, album) => count + album.pieces.length, 0);
+function GalleryEditor({ block, onChange, galleryPiecesLeft }: EditorProps<'gallery'>) {
+  // The cap is across the whole page, so another gallery block's pieces use up room here too.
+  const room = Math.max(0, galleryPiecesLeft);
   const setAlbum = (index: number, album: ArtAlbum) => onChange({ ...block, albums: block.albums.map((a, i) => (i === index ? album : a)) });
   return (
     <>
@@ -504,7 +515,7 @@ function GalleryEditor({ block, onChange }: EditorProps<'gallery'>) {
         {block.ratings
           ? 'Pieces rated Mature are blurred until clicked for signed-in visitors, and never shown to anyone signed out. Everyone here is 18 or over, but 18+ content needs a content warning. '
           : ''}
-        {total} of {LIMITS.galleryPieces} pieces.
+        {LIMITS.galleryPieces - room} of {LIMITS.galleryPieces} gallery pieces used on your page; each album holds up to {LIMITS.albumPieces}.
       </p>
       {block.albums.map((album, index) => (
         <fieldset key={album.id} className="nu-page-editor__subitem" data-nu-role="page-editor-gallery-album">
@@ -516,6 +527,22 @@ function GalleryEditor({ block, onChange }: EditorProps<'gallery'>) {
             About this album (optional)
             <input className="nu-field__input" value={album.description ?? ''} maxLength={LIMITS.caption} onChange={(evt) => setAlbum(index, { ...album, description: evt.target.value || undefined })} />
           </label>
+          <div className="nu-page-editor__row">
+            <ImagePicker
+              label="Add pieces…"
+              multiple
+              max={Math.min(LIMITS.albumPieces - album.pieces.length, room)}
+              disabled={album.pieces.length >= LIMITS.albumPieces || room < 1}
+              onUploaded={(urls) => setAlbum(index, { ...album, pieces: [...album.pieces, ...urls.map((url): ArtPiece => ({ url, tags: [], rating: 'general' }))] })}
+            />
+            <span className="nu-field__hint" data-nu-role="page-editor-gallery-room">
+              {album.pieces.length >= LIMITS.albumPieces
+                ? `This album is full (${LIMITS.albumPieces} pieces). Add another album, or remove a piece here.`
+                : room < 1
+                  ? `Your page has all ${LIMITS.galleryPieces} gallery pieces it can hold, counting every gallery on it. Remove a piece to add another.`
+                  : `${album.pieces.length} of ${LIMITS.albumPieces} in this album. Open a piece to give it a title, caption or tags.`}
+            </span>
+          </div>
           {album.pieces.map((piece, pieceIndex) => (
             <PieceEditor
               key={`${piece.url}-${pieceIndex}`}
@@ -525,13 +552,6 @@ function GalleryEditor({ block, onChange }: EditorProps<'gallery'>) {
               onRemove={() => setAlbum(index, { ...album, pieces: album.pieces.filter((_, i) => i !== pieceIndex) })}
             />
           ))}
-          <ImagePicker
-            label="Add pieces…"
-            multiple
-            max={Math.min(LIMITS.albumPieces - album.pieces.length, LIMITS.galleryPieces - total)}
-            disabled={album.pieces.length >= LIMITS.albumPieces || total >= LIMITS.galleryPieces}
-            onUploaded={(urls) => setAlbum(index, { ...album, pieces: [...album.pieces, ...urls.map((url): ArtPiece => ({ url, tags: [], rating: 'general' }))] })}
-          />
           <button type="button" className="nu-page-editor__inline-button" onClick={() => onChange({ ...block, albums: block.albums.filter((_, i) => i !== index) })}>
             Remove this album
           </button>
@@ -786,6 +806,7 @@ function Fields({
   imagesLeft,
   tracksLeft,
   musicAlbumsLeft,
+  galleryPiecesLeft,
 }: {
   block: PageBlock;
   onChange: (block: PageBlock) => void;
@@ -793,8 +814,9 @@ function Fields({
   imagesLeft: number;
   tracksLeft: number;
   musicAlbumsLeft: number;
+  galleryPiecesLeft: number;
 }) {
-  const shared = { emotes, imagesLeft, tracksLeft, musicAlbumsLeft };
+  const shared = { emotes, imagesLeft, tracksLeft, musicAlbumsLeft, galleryPiecesLeft };
   switch (block.type) {
     case 'text':
       return <TextEditor block={block} onChange={onChange} {...shared} />;
@@ -834,6 +856,7 @@ export function BlockEditor({
   imagesLeft,
   tracksLeft,
   musicAlbumsLeft,
+  galleryPiecesLeft,
   onToggle,
   onChange,
   onMove,
@@ -850,6 +873,7 @@ export function BlockEditor({
   imagesLeft: number;
   tracksLeft: number;
   musicAlbumsLeft: number;
+  galleryPiecesLeft: number;
   onToggle: () => void;
   onChange: (block: PageBlock) => void;
   onMove: (delta: -1 | 1) => void;
@@ -898,7 +922,7 @@ export function BlockEditor({
       </div>
       {open && (
         <div className="nu-page-editor__block-fields">
-          <Fields block={block} onChange={onChange} emotes={emotes} imagesLeft={imagesLeft} tracksLeft={tracksLeft} musicAlbumsLeft={musicAlbumsLeft} />
+          <Fields block={block} onChange={onChange} emotes={emotes} imagesLeft={imagesLeft} tracksLeft={tracksLeft} musicAlbumsLeft={musicAlbumsLeft} galleryPiecesLeft={galleryPiecesLeft} />
         </div>
       )}
     </div>

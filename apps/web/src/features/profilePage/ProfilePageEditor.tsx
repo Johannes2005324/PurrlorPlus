@@ -21,6 +21,7 @@ import {
   columnBlocks,
   imageCount,
   moveBlock,
+  galleryPieceCount,
   musicAlbumCount,
   removeBlock,
   setBlockSide,
@@ -89,6 +90,7 @@ export function ProfilePageEditor({
   const imagesLeft = LIMITS.images - imageCount(page);
   const tracksLeft = LIMITS.tracks - trackCount(page);
   const musicAlbumsLeft = LIMITS.musicAlbums - musicAlbumCount(page);
+  const galleryPiecesLeft = LIMITS.galleryPieces - galleryPieceCount(page);
 
   const handlePublish = async () => {
     setBusy('publishing');
@@ -214,6 +216,7 @@ export function ProfilePageEditor({
                       imagesLeft={imagesLeft}
                       tracksLeft={tracksLeft}
                       musicAlbumsLeft={musicAlbumsLeft}
+                      galleryPiecesLeft={galleryPiecesLeft}
                       onToggle={() => setOpenBlock(openBlock === block.id ? undefined : block.id)}
                       onChange={(next) => edit(updateBlock(page, next))}
                       onMove={(delta) => edit(moveBlock(page, block.id, delta))}
@@ -238,6 +241,7 @@ export function ProfilePageEditor({
                   imagesLeft={imagesLeft}
                   tracksLeft={tracksLeft}
                   musicAlbumsLeft={musicAlbumsLeft}
+                  galleryPiecesLeft={galleryPiecesLeft}
                   onToggle={() => setOpenBlock(openBlock === song.id ? undefined : song.id)}
                   onChange={(next) => edit(updateBlock(page, next))}
                   onMove={() => undefined}

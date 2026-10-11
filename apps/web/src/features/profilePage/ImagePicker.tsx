@@ -38,10 +38,13 @@ export function ImagePicker({
   const mx = useMatrixClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [note, setNote] = useState<string>();
 
   const onChange = async (evt: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(evt.target.files ?? []).slice(0, Math.max(0, max));
+    const picked = Array.from(evt.target.files ?? []);
+    const files = picked.slice(0, Math.max(0, max));
     evt.target.value = '';
+    setNote(picked.length > files.length ? `Only ${files.length} more ${files.length === 1 ? 'fits' : 'fit'}, so the other ${picked.length - files.length} weren’t added.` : undefined);
     if (files.length === 0) return;
     setBusy(true);
     setError(undefined);
@@ -68,6 +71,7 @@ export function ImagePicker({
           onChange={(evt) => void onChange(evt)}
         />
       </label>
+      {note && <span className="nu-field__hint">{note}</span>}
       {error && <span className="nu-field__error">{error}</span>}
     </span>
   );
