@@ -14,12 +14,17 @@ const HOME: View = {
   mobileMembers: false,
 };
 
-/** A view, a fake browser history and a clock, as the hook wires them up. */
+/**
+ * A view, a fake browser history and a clock, as the hook wires them up. Like a browser's,
+ * `go` moves later: `settle()` runs what's waiting (the browser's traversal, and the pop-up's
+ * look after it closes), as the page's event loop would.
+ */
 function setup() {
   let view = HOME;
   let time = 0;
   const entries: unknown[] = [{}];
   let at = 0;
+  const waiting: (() => void)[] = [];
   const history = {
     get state() {
       return entries[at];
@@ -31,42 +36,77 @@ function setup() {
     replaceState(state: unknown) {
       entries[at] = state;
     },
+    go(delta: number) {
+      waiting.push(() => {
+        at += delta;
+        nav.popped(entries[at]);
+      });
+    },
   };
-  const nav = new NavigationHistory(history as unknown as History, () => view, (v) => (view = v), () => time);
+  const nav: NavigationHistory = new NavigationHistory(
+    history as unknown as History,
+    () => view,
+    (v) => (view = v),
+    () => time,
+    (run) => waiting.push(run)
+  );
   nav.start();
+  const settle = () => {
+    while (waiting.length) waiting.shift()!();
+  };
   return {
     nav,
+    settle,
+    /** The person goes somewhere. */
     go(next: Partial<View>) {
       time += SETTLE_MS + 1;
       view = { ...view, ...next };
       nav.changed();
+      settle();
     },
-    settle(next: Partial<View>) {
+    /** The view moves on by itself, straight after. */
+    drift(next: Partial<View>) {
       time += 10;
       view = { ...view, ...next };
       nav.changed();
     },
     back() {
-      at -= 1;
       time += SETTLE_MS + 1;
-      nav.popped(entries[at]);
+      history.go(-1);
+      settle();
     },
     get view() {
       return view;
     },
-    get entries() {
-      return entries.length;
+    /** How many entries Back can reach, counting the current one. */
+    get position() {
+      return at + 1;
     },
   };
 }
 
-describe('NavigationHistory', () => {
+/** A pop-up as Modal opens one: open, and later closed by itself (or by Back). */
+function popup(t: ReturnType<typeof setup>) {
+  const state = { open: true, seq: 0 };
+  state.seq = t.nav.opened(() => (state.open = false));
+  return {
+    get open() {
+      return state.open;
+    },
+    closeItself() {
+      state.open = false;
+      t.nav.closed(state.seq);
+    },
+  };
+}
+
+describe('NavigationHistory: screens', () => {
   it('goes back through the screens, one entry per change of view', () => {
     const t = setup();
     t.go({ spaceId: '!cats', roomId: '!general' });
     t.go({ roomId: '!art' });
     t.go({ profileUserId: '@mochi:purr.example' });
-    expect(t.entries).toBe(4);
+    expect(t.position).toBe(4);
 
     t.back();
     expect(t.view).toMatchObject({ roomId: '!art', profileUserId: null });
@@ -80,15 +120,15 @@ describe('NavigationHistory', () => {
     const t = setup();
     t.go({ spaceId: '!cats' });
     // Opening the Space lands on its first channel a moment later.
-    t.settle({ roomId: '!general' });
-    expect(t.entries).toBe(2);
+    t.drift({ roomId: '!general' });
+    expect(t.position).toBe(2);
 
     t.go({ spaceId: '!dogs', roomId: null });
     t.back();
     expect(t.view).toMatchObject({ spaceId: '!cats', roomId: '!general' });
     // A view put back that moves itself on amends its entry rather than adding one.
-    t.settle({ roomId: '!news' });
-    expect(t.entries).toBe(3);
+    t.drift({ roomId: '!news' });
+    expect(t.position).toBe(2);
     t.back();
     expect(t.view).toEqual(HOME);
   });
@@ -96,7 +136,7 @@ describe('NavigationHistory', () => {
   it('ignores a change that leaves the view as it was', () => {
     const t = setup();
     t.go({});
-    expect(t.entries).toBe(1);
+    expect(t.position).toBe(1);
   });
 
   it('drops the screens ahead when going somewhere new after Back', () => {
@@ -107,5 +147,67 @@ describe('NavigationHistory', () => {
     t.go({ roomId: '!c' });
     t.back();
     expect(t.view).toMatchObject({ roomId: '!a' });
+  });
+});
+
+describe('NavigationHistory: pop-ups', () => {
+  it('closes the pop-up on Back, and leaves the screen under it as it was', () => {
+    const t = setup();
+    t.go({ roomId: '!general' });
+    const settings = popup(t);
+    t.back();
+    expect(settings.open).toBe(false);
+    expect(t.view).toMatchObject({ roomId: '!general' });
+    t.back();
+    expect(t.view).toEqual(HOME);
+  });
+
+  it('spends no Back on a pop-up that closed by itself', () => {
+    const t = setup();
+    t.go({ roomId: '!general' });
+    const settings = popup(t);
+    settings.closeItself();
+    t.settle();
+    expect(t.position).toBe(2);
+    t.back();
+    expect(t.view).toEqual(HOME);
+  });
+
+  it('goes back past a pop-up that closed by taking you somewhere', () => {
+    const t = setup();
+    t.go({ roomId: '!general' });
+    const search = popup(t);
+    // A search result: the room opens and the pop-up closes, together.
+    search.closeItself();
+    t.go({ roomId: '!art' });
+    expect(t.view).toMatchObject({ roomId: '!art' });
+    t.back();
+    expect(t.view).toMatchObject({ roomId: '!general' });
+    t.back();
+    expect(t.view).toEqual(HOME);
+  });
+
+  it('closes the top pop-up first when one opened over another', () => {
+    const t = setup();
+    const settings = popup(t);
+    const confirm = popup(t);
+    t.back();
+    expect([settings.open, confirm.open]).toEqual([true, false]);
+    t.back();
+    expect(settings.open).toBe(false);
+  });
+
+  it("copes with a pop-up opened twice at once (React's StrictMode, in development)", () => {
+    const t = setup();
+    t.go({ roomId: '!general' });
+    const first = popup(t);
+    first.closeItself();
+    const second = popup(t);
+    t.settle();
+    t.back();
+    expect(second.open).toBe(false);
+    expect(t.view).toMatchObject({ roomId: '!general' });
+    t.back();
+    expect(t.view).toEqual(HOME);
   });
 });

@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useBackCloses } from '../app/navigationHistory';
 import './Modal.css';
 
 type ModalProps = {
@@ -11,8 +12,10 @@ type ModalProps = {
   wide?: boolean;
 };
 
-/** Shared centered-panel overlay — click the backdrop, the close button, or press Escape. */
+/** Shared centered-panel overlay — click the backdrop, the close button, press Escape, or Back
+ *  (app/navigationHistory.ts; the phone's Back button in the Android app). */
 export function Modal({ title, onClose, children, wide }: ModalProps) {
+  useBackCloses(onClose);
   useEffect(() => {
     const onKeyDown = (evt: KeyboardEvent) => {
       if (evt.key === 'Escape') onClose();
