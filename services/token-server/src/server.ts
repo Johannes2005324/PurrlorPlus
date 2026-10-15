@@ -1,10 +1,11 @@
+import { join } from 'node:path';
 import express from 'express';
 import { ipWatch } from './ipWatch.js';
 import cors from 'cors';
 import { corsOptions, parseAllowedOrigins } from './corsPolicy.js';
 import { AccessToken, RoomServiceClient, TrackSource } from 'livekit-server-sdk';
 import { validateOpenIdToken } from './openid.js';
-import { checkMembership, getBotUserId, mayViewParticipants } from './membership.js';
+import { checkMembership, getBotUserId, getServiceClient, mayViewParticipants } from './membership.js';
 import { grantsForPowerLevel } from './grants.js';
 import { livekitRoomName } from './livekitRoomName.js';
 import { handleWebhook } from './webhooks.js';
@@ -18,6 +19,8 @@ import { standardMetrics } from './metrics.js';
 import { finalErrorHandler, opsRouter } from './ops.js';
 import { clientErrorHandler } from './clientErrors.js';
 import { onlineCounter } from './online.js';
+import { BugReportLog, BugRoom, bugReportsRouter, parseBugAdmins, parseBugProjects } from './bugReports.js';
+import { serverNameOf } from './publicWeb.js';
 
 // The build this is (a commit, set by the image build), for `purrlor metrics` and error reports.
 const VERSION = process.env.PURRLOR_VERSION || undefined;
@@ -250,6 +253,20 @@ app.post('/api/webhooks/:roomId/:webhookId/:token', (req, res) => {
  */
 /** Errors the web app hit in someone's browser (clientErrors.ts). Before the router, which limits per page. */
 app.post('/api/public/client-errors', clientErrorHandler(errorLog));
+/** `!bug <project> <text>` from the app, passed on to the server's admins (bugReports.ts, docs/bug-reports.md). */
+const DATA_DIR = process.env.PURRLOR_DATA_DIR ?? '/data';
+const bugLog = new BugReportLog(join(DATA_DIR, 'bug-reports.jsonl'));
+const bugRoom = new BugRoom(join(DATA_DIR, 'bug-room.json'), getServiceClient, parseBugAdmins(process.env.BUG_REPORT_ADMINS));
+app.use(
+  '/api/public/bugs',
+  bugReportsRouter({
+    projects: parseBugProjects(process.env.BUG_PROJECTS),
+    log: bugLog,
+    caller: voiceCaller,
+    isLocal: async (userId) => serverNameOf(userId) === (await serverName()),
+    deliver: (report) => bugRoom.deliver(report),
+  })
+);
 app.use('/api/public/embeds', embedsRouter());
 app.use('/api/public', publicWebRouter());
 
@@ -269,7 +286,7 @@ startPeering();
  */
 const CONTROL_SOCKET = process.env.CONTROL_SOCKET ?? (process.platform === 'win32' ? '' : '/control/purrlor.sock');
 if (CONTROL_SOCKET) {
-  listenOnControlSocket(CONTROL_SOCKET, controlApp({ store: adminStore, ...controlDeps() })).then(
+  listenOnControlSocket(CONTROL_SOCKET, controlApp({ store: adminStore, bugs: bugLog, ...controlDeps() })).then(
     () => console.log(`Admin control socket at ${CONTROL_SOCKET}`),
     (err) => console.error(`Admin control socket not started: ${(err as Error).message}`)
   );

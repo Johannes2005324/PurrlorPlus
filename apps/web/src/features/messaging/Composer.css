@@ -173,6 +173,12 @@
   font-size: var(--nu-font-size-sm);
 }
 
+.nu-composer__command-notice {
+  margin: 0 var(--nu-space-4);
+  color: var(--nu-color-text-muted);
+  font-size: var(--nu-font-size-sm);
+}
+
 .nu-composer__slowmode {
   margin: 0 var(--nu-space-4);
   color: var(--nu-color-text-muted);

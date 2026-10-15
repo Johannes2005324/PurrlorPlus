@@ -156,6 +156,7 @@ Moderation (root; docs/admin.md) — every change needs a reason, which goes in 
   purrlor takedown run                 delete the queued files from the homeserver (admin password)
   purrlor reports [--pages]            page reports from the homeserver's admin room (admin password)
   purrlor audit [N]                    the last N things done (default 50)
+  purrlor bugs [project] [--limit N]   bug reports people sent with !bug (docs/bug-reports.md)
   purrlor stats                        registered accounts, online now, public pages: totals only (admin password)
   purrlor ips [seconds]                watch which addresses reach the token server, and through which hops (default 60)
 
@@ -2055,6 +2056,17 @@ cmd_audit() {
   ctl GET /audit --data-urlencode "limit=$n"
 }
 
+cmd_bugs() {
+  local usage="Usage: purrlor bugs [project] [--limit N]"
+  need_root bugs "$@"
+  parse_opts "$@"
+  [ "${#POS[@]}" -le 1 ] || die "$usage"
+  local n="${LIMIT:-50}" project="${POS[0]:-}"
+  printf '%s' "$n" | grep -Eq '^[0-9]{1,4}$' || die "$usage"
+  [ -z "$project" ] || printf '%s' "$project" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$' || die "$usage"
+  ctl GET /bugs --data-urlencode "limit=$n" ${project:+--data-urlencode "project=$project"}
+}
+
 # The dispatcher and the `exit` after it are one command (same line as `esac`), so bash has read
 # all of it before running any of it — a script updated underneath it can't be half-read.
 case "${1:-help}" in
@@ -2085,6 +2097,7 @@ case "${1:-help}" in
   takedown) shift; cmd_takedown "$@" ;;
   reports) shift; cmd_reports "$@" ;;
   audit) shift; cmd_audit "$@" ;;
+  bugs) shift; cmd_bugs "$@" ;;
   stats) shift; cmd_stats "$@" ;;
   ips) shift; cmd_ips "$@" ;;
   matrix-dns) write_matrix_resolv ;;

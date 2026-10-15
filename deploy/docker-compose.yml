@@ -109,6 +109,10 @@ services:
       - MATRIX_BOT_PASSWORD=${MATRIX_BOT_PASSWORD:-}
       - VOICE_MODERATOR_POWER_LEVEL=${VOICE_MODERATOR_POWER_LEVEL:-50}
       - VOICE_ALLOWED_SPACES=${VOICE_ALLOWED_SPACES:-}
+      # `!bug <project> <text>` in the app (docs/bug-reports.md): the projects it may name, and the
+      # accounts the service bot invites to its "Bug reports" room.
+      - BUG_PROJECTS=${BUG_PROJECTS:-}
+      - BUG_REPORT_ADMINS=${BUG_REPORT_ADMINS:-}
       # The public web (docs/public-web.md). PUBLIC_WEB_URL is the app's own address, used in link
       # previews; unset, it's taken from each request. Hidden pages: `purrlor pages hide <name>`.
       - PUBLIC_WEB_URL=${PUBLIC_WEB_URL:-}

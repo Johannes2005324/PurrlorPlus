@@ -156,6 +156,12 @@ is the credential; the channel stores only its SHA-256 (`xyz.nekous.webhook` sta
 `400` bad body, `404` unknown webhook or wrong token, `409` encrypted channel, `429` rate limited.
 See [webhooks.md](webhooks.md).
 
+### `GET`/`POST /api/public/bugs`
+
+Bug reports sent with `!bug <project> <text>`. `GET` lists the projects (`BUG_PROJECTS`); `POST`
+takes `{ openid_token, project, text, platform?, version? }` from an account on this server, keeps it
+and has the service bot post it to the admins' room. See [bug-reports.md](bug-reports.md).
+
 ### `GET /api/public/…`
 
 The public web, for people who aren't signed in: Global posts and opted-in profile pages, their

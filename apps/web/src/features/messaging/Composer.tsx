@@ -27,6 +27,7 @@ import { findParentSpaceId } from '../../matrix/spaceChildren';
 import { useChannelPermissions, useSlowmodeWait } from '../../matrix/hooks/useChannelPermissions';
 import { buildReplyRelation, type ReplyTarget } from '../../matrix/replies';
 import { findSlashCommand, parseSlashInput, SLASH_COMMANDS } from '../../matrix/slashCommands';
+import { BUG_USAGE, parseBugCommand, sendBugReport } from '../../matrix/bugReport';
 import { sendFileMessage, sendVoiceMessage } from '../../matrix/upload';
 import { computeWaveform } from '../../matrix/waveform';
 import { embedsContent } from '../../matrix/embeds';
@@ -76,6 +77,8 @@ export function Composer({
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [commandError, setCommandError] = useState<string>();
+  // "Bug report sent": a `!bug` (matrix/bugReport.ts) isn't a message, so nothing else shows it went.
+  const [commandNotice, setCommandNotice] = useState<string>();
   const [commandIndex, setCommandIndex] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showPollModal, setShowPollModal] = useState(false);
@@ -151,6 +154,7 @@ export function Composer({
     setText(value);
     setCommandIndex(0);
     setCommandError(undefined);
+    setCommandNotice(undefined);
     mention.update(value, evt.target.selectionStart ?? value.length);
     shortcodeAutocomplete.update(value, evt.target.selectionStart ?? value.length);
     if (!value.trim()) {
@@ -176,6 +180,29 @@ export function Composer({
   const send = async () => {
     const body = text.trim();
     if ((!body && !attachment) || sending) return;
+    // `!bug <project> <text>` goes to the server's admins, never into the channel, so it skips
+    // slowmode and the blocked words too.
+    const bug = parseBugCommand(body);
+    if (bug) {
+      setCommandNotice(undefined);
+      if (bug.type === 'usage' || attachment) {
+        setCommandError(bug.type === 'usage' ? `Usage: ${BUG_USAGE}` : 'A bug report is text only: send the file on its own.');
+        return;
+      }
+      setSending(true);
+      setText('');
+      try {
+        const project = await sendBugReport(mx, bug.project, bug.text);
+        setCommandNotice(`Bug report sent to the admins, filed under ${project}. Thanks!`);
+      } catch (err) {
+        setText(body);
+        setCommandError(err instanceof Error ? err.message : 'The bug report couldn’t be sent.');
+      } finally {
+        setSending(false);
+        focusInput();
+      }
+      return;
+    }
     // Slowmode (matrix/channelPermissions.ts) holds messages, not commands. Checked afresh here
     // rather than from the countdown, which only ticks once a second.
     const isCommand = body.startsWith('/') && !body.startsWith('//');
@@ -469,6 +496,11 @@ export function Composer({
       {commandError && (
         <p className="nu-composer__command-error" data-nu-role="composer-command-error">
           {commandError}
+        </p>
+      )}
+      {commandNotice && (
+        <p className="nu-composer__command-notice" role="status" data-nu-role="composer-command-notice">
+          {commandNotice}
         </p>
       )}
       {voiceRecorder.state.status === 'error' && (

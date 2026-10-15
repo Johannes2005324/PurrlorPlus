@@ -4,6 +4,7 @@ import { basename, dirname } from 'node:path';
 import express, { type Request, type Response } from 'express';
 import { mediaDeleteCommand, withAdminSession, type AdminCredentials, type AdminSession } from './adminRoom.js';
 import type { AdminStore } from './adminStore.js';
+import type { BugReportLog } from './bugReports.js';
 import {
   cleanActor,
   cleanReason,
@@ -64,6 +65,8 @@ export type ControlDeps = {
   peerServers?(): Promise<Set<string>>;
   /** Peering (peering.ts): what `purrlor peers` drives. */
   peering?: PeeringDeps;
+  /** Bug reports sent with `!bug` (bugReports.ts): what `purrlor bugs` reads. */
+  bugs?: BugReportLog;
 };
 
 export type PeeringDeps = {
@@ -623,6 +626,29 @@ export function controlApp(deps: ControlDeps): express.Express {
         .map((r) => `${r.serverName}: reading ${r.profiles} profile(s), ${r.spaces} Space(s), ${r.feeds} feed(s)${r.lastError ? `; failed: ${r.lastError}` : ''}`)
         .join('\n');
       reply(req, res, results.some((r) => r.lastError) ? 207 : 200, text, { results });
+    })
+  );
+
+  // --- Bug reports ------------------------------------------------------------------------------
+
+  // What people sent with `!bug <project> <text>`, newest last. Reading them changes nothing, so no
+  // reason is asked for, as with the audit log.
+  app.get(
+    '/bugs',
+    route(async (req, res) => {
+      const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 5000);
+      const project = one(req.query.project)?.trim().toLowerCase() || undefined;
+      const reports = (await deps.bugs?.recent(limit, project)) ?? [];
+      const line = (r: (typeof reports)[number]) => {
+        const about = [r.platform, r.version && `version ${r.version}`].filter(Boolean).join(', ');
+        return `${formatTime(r.at)}  [${r.project}]  ${r.reporter}${about ? `  (${about})` : ''}\n    ${r.text.replace(/\n/g, '\n    ')}`;
+      };
+      const text = reports.length
+        ? reports.map(line).join('\n')
+        : project
+          ? `No bug reports for '${project}'.`
+          : 'No bug reports yet.';
+      reply(req, res, 200, text, { reports });
     })
   );
 
