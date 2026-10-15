@@ -1,0 +1,71 @@
+plugins {
+    id 'com.android.application'
+}
+
+// The server this app opens (gradle.properties). Only a host name: the app is the site at
+// https://<host>/, and the site vouches for the app with /.well-known/assetlinks.json.
+def host = providers.gradleProperty('purrlor.host').get()
+if (!(host ==~ /^[A-Za-z0-9.-]+(:[0-9]+)?$/)) {
+    throw new GradleException("purrlor.host must be a host name like purr.example, not '${host}'")
+}
+def siteUrl = "https://${host}"
+def appName = providers.gradleProperty('purrlor.appName').get()
+
+// A string resource holding JSON: its quotes escaped for the generated XML.
+def jsonRes = { String json -> json.replace('"', '\\"') }
+
+// Release signing, from the environment (the CI secrets; README.md has how to make a key). Without
+// them a release build is left unsigned.
+def keystore = System.getenv('PURRLOR_KEYSTORE')
+
+android {
+    namespace 'net.meowops.purrlor'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId providers.gradleProperty('purrlor.applicationId').get()
+        minSdk 23
+        targetSdk 36
+        versionCode 1
+        versionName '1.0.0'
+
+        manifestPlaceholders = [host: host]
+        resValue 'string', 'appName', appName
+        resValue 'string', 'launchUrl', "${siteUrl}/"
+        resValue 'string', 'providerAuthority', "${applicationId}.fileprovider"
+        // Which site this app may open full screen; the site says the same back in assetlinks.json.
+        resValue 'string', 'assetStatements', jsonRes(
+            """[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"web","site":"${siteUrl}"}}]""")
+        // Sharing to the app goes to the site's own share target (manifest.webmanifest, public/sw.js).
+        resValue 'string', 'shareTarget', jsonRes(
+            """{"action":"${siteUrl}/share-target","method":"POST","enctype":"multipart/form-data","params":{"title":"share_title","text":"share_text","url":"share_url","files":[{"name":"share_media","accept":["image/*","video/*"]}]}}""")
+    }
+
+    signingConfigs {
+        release {
+            if (keystore) {
+                storeFile file(keystore)
+                storePassword System.getenv('PURRLOR_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('PURRLOR_KEY_ALIAS')
+                keyPassword System.getenv('PURRLOR_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (keystore) signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Google's Trusted Web Activity launcher: opens the site in the phone's Chrome, full screen.
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}

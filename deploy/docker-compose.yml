@@ -217,6 +217,11 @@ services:
       - PURRLOR_LIVEKIT_URL=${PURRLOR_LIVEKIT_URL:-}
       - PURRLOR_TOKEN_ENDPOINT=${PURRLOR_TOKEN_ENDPOINT:-}
       - PURRLOR_PUSH_GATEWAY_URL=${PURRLOR_PUSH_GATEWAY_URL:-}
+      # The Android app this site vouches for (apps/android/README.md): its package name and the
+      # SHA-256 fingerprints of its signing keys, comma-separated. Unset: no assetlinks.json, and
+      # the app opens the site with Chrome's address bar showing.
+      - PURRLOR_ANDROID_PACKAGE=${PURRLOR_ANDROID_PACKAGE:-}
+      - PURRLOR_ANDROID_CERT_SHA256=${PURRLOR_ANDROID_CERT_SHA256:-}
     volumes:
       # This server's own files that replace the app's samples, kept out of git so an update never
       # overwrites them: custom/terms.html, the Terms of Service (README, "Your Terms of Service").

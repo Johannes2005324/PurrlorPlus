@@ -1,0 +1,73 @@
+name: Android
+
+# Builds the Android app (apps/android): a Trusted Web Activity that opens the Purrlor site full
+# screen. Every build makes a debug APK to try. Pushing a tag named android-vX.Y.Z (matching
+# versionName in apps/android/app/build.gradle) also signs the release with the upload key and
+# publishes the APK and the Play bundle (AAB) as a GitHub release.
+on:
+  push:
+    branches: [master]
+    tags: ['android-v*']
+    paths: ['apps/android/**', '.github/workflows/android.yml']
+  pull_request:
+    paths: ['apps/android/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: android app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      # No wrapper is checked in (it's a binary); the runner's Gradle builds it, at this version.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Check the tag matches the app version
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        run: |
+          version=$(sed -n "s/^ *versionName '\(.*\)'/\1/p" app/build.gradle)
+          [ "android-v$version" = "${{ github.ref_name }}" ] || { echo "Tag ${{ github.ref_name }} doesn't match versionName $version"; exit 1; }
+      - name: Debug build
+        run: gradle --no-daemon assembleDebug
+      - name: Release build
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          PURRLOR_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          PURRLOR_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          PURRLOR_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          [ -n "$KEYSTORE_BASE64" ] || { echo "ANDROID_KEYSTORE_BASE64 isn't set: the release would be unsigned"; exit 1; }
+          export PURRLOR_KEYSTORE="$RUNNER_TEMP/upload.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$PURRLOR_KEYSTORE"
+          gradle --no-daemon assembleRelease bundleRelease
+          rm -f "$PURRLOR_KEYSTORE"
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk dist/Purrlor.apk
+          cp app/build/outputs/bundle/release/app-release.aab dist/Purrlor.aab
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Purrlor-debug-apk
+          path: apps/android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#android-v}"
+          gh release create "$GITHUB_REF_NAME" dist/Purrlor.apk dist/Purrlor.aab \
+            --title "Purrlor for Android $version" \
+            --notes "Android app for Purrlor (purr.meowops.net). Install **Purrlor.apk** on a phone, or upload **Purrlor.aab** to Google Play. It opens Purrlor in the phone's Chrome, full screen; notifications, voice and sharing work as on the website."
