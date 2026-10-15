@@ -156,9 +156,16 @@ Moderation (root; docs/admin.md) — every change needs a reason, which goes in 
   purrlor takedown run                 delete the queued files from the homeserver (admin password)
   purrlor reports [--pages]            page reports from the homeserver's admin room (admin password)
   purrlor audit [N]                    the last N things done (default 50)
-  purrlor bugs [project] [--open]      bug reports people sent with !bug, and which are resolved
   purrlor stats                        registered accounts, online now, public pages: totals only (admin password)
   purrlor ips [seconds]                watch which addresses reach the token server, and through which hops (default 60)
+
+Bug reports (root; docs/bug-reports.md) — people send them with !bug <project> <what's wrong>:
+  purrlor bugs                         the last 50 bug reports, each open or resolved by whom
+  purrlor bugs <project>               only that project's (one of BUG_PROJECTS in .env)
+  purrlor bugs --open                  only those not resolved yet
+  purrlor bugs --limit N               the last N instead of 50
+  They combine: purrlor bugs purrlor --open --limit 200. Resolve one in the Bug reports room:
+  tap the ✅ under it or reply "fixed"; reply "reopen" or take the ✅ back to open it again.
 
 Federation with other Purrlor instances (root; docs/federation.md):
   purrlor peers                        the instances this one federates with, and what the bot reads there
