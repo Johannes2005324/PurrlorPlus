@@ -172,6 +172,29 @@ check "audit refuses a non-number" never_called
 run audit 5 6
 check "audit refuses extra arguments" never_called
 
+run bugs
+check "bugs lists the last 50" sent "http://purrlor/bugs"
+check "bugs lists 50 by default" sent "limit=50"
+run bugs purrlor --open --limit 200
+check "bugs takes a project" sent "project=purrlor"
+check "bugs --open asks for open ones" sent "open=1"
+check "bugs --limit takes a count" sent "limit=200"
+run bugs "../x"
+check "bugs refuses a project that isn't a name" never_called
+run bugs resolve a1b2c3d4e5f6 --reason "fixed in 1a2b3c"
+check "bugs resolve posts to the report's route" sent "http://purrlor/bugs/a1b2c3d4e5f6/resolve"
+check "bugs resolve carries the reason" sent "reason=fixed in 1a2b3c"
+check "bugs resolve carries the actor" sent "actor=tester"
+run bugs resolve a1b2c3d4e5f6
+check "bugs resolve needs no reason" sent "http://purrlor/bugs/a1b2c3d4e5f6/resolve"
+run bugs reopen a1b2c3d4e5f6
+check "bugs reopen posts to the report's route" sent "http://purrlor/bugs/a1b2c3d4e5f6/reopen"
+run bugs resolve "../../pages/luna/hide"
+check "bugs resolve refuses anything but an ID" never_called
+check "bugs resolve says what an ID is" out_has "first column"
+run bugs resolve
+check "bugs resolve needs an ID" never_called
+
 # --- what the server says ------------------------------------------------------------------------
 
 FAKE_CODE=400 FAKE_BODY="Nope" run pages hide luna --reason spam --yes

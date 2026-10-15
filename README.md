@@ -88,6 +88,11 @@ right-click (or the "..." menu) for more. The 🔍 icon searches the current cha
 the 🔔 in the server rail opens Notifications, which includes everywhere you were actually
 @mentioned, so you don't have to scroll back to find it.
 
+Found a bug? Type `!bug <project> <what's wrong>` in any channel or DM, e.g.
+`!bug purrlor emojis don't work on mobile`. It goes to the server's admins, not into the channel;
+the word after `!bug` is the project it's filed under (an unknown one gets you the list). See
+[`docs/bug-reports.md`](docs/bug-reports.md).
+
 ### Voice & video
 Click a voice channel to join instantly — no separate "call" step. The call bar stays active even
 if you switch to a different text channel, so you can keep chatting elsewhere without hanging up;
@@ -394,6 +399,35 @@ The installer adds a `purrlor` command:
 | `purrlor new-invite-code` | Replaces the sign-up code |
 | `purrlor open-signups` / `close-signups` | Allows or stops new sign-ups |
 | `purrlor emotes setup` | Creates the global emote library, owned by the admin (once; the installer already does it) |
+| `purrlor bugs` | Bug reports people sent with `!bug`, each open or resolved by whom (`bugs <project>`, `bugs --open`, `bugs --limit N`, `bugs resolve <id>`, `bugs reopen <id>`) |
+
+#### Bug reports
+
+People send them from the app with `!bug <project> <what's wrong>`. Set it up in `.env`, then
+`purrlor restart token-server`:
+
+```sh
+BUG_PROJECTS=purrlor,ultimit          # what <project> may be (default: purrlor)
+BUG_REPORT_ADMINS=@you:YOUR_DOMAIN    # who the bot invites to its "Bug reports" room
+```
+
+| Where | What | What it does |
+|---|---|---|
+| The app | `!bug <project> <what's wrong>` | Sends a bug report to the admins, filed under that project |
+| Bug reports room | Tap the ✅ under a report | Marks it resolved; the bot edits it to say who did |
+| Bug reports room | Reply `fixed`, `resolved` or `done` | The same, by reply ("fixed in 1a2b3c" works) |
+| Bug reports room | Reply `reopen`, or take your ✅ back | Opens it again |
+| The server | `sudo purrlor bugs` | The last 50, each open or resolved by whom |
+| The server | `sudo purrlor bugs <project>` | Only that project's |
+| The server | `sudo purrlor bugs --open` | Only those not resolved yet |
+| The server | `sudo purrlor bugs --limit N` | The last N instead of 50 |
+| The server | `sudo purrlor bugs resolve <id>` | Marks one resolved (its ID is the list's first column), and edits its notice in the room |
+| The server | `sudo purrlor bugs reopen <id>` | Opens it again |
+
+The list's options combine: `sudo purrlor bugs purrlor --open --limit 200`. `resolve` and
+`reopen` take an optional `--reason "fixed in 1a2b3c"`, which is shown on the report and kept in the
+audit log. See
+[`docs/bug-reports.md`](docs/bug-reports.md).
 
 ### Your Terms of Service
 

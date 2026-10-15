@@ -269,8 +269,8 @@ describe('purrlor bugs (the control socket)', () => {
       const all = await (await fetch(url)).text();
       assert.equal(
         all,
-        "2026-10-14 12:00  [purrlor]  open  @luna:purr.example  (mobile)\n    emojis don't work on mobile\n" +
-          '2026-10-14 12:00  [ultimit]  resolved by @mino:s 2026-10-14 13:00  @luna:purr.example\n    line one\n    line two\n'
+        "r1  2026-10-14 12:00  [purrlor]  open  @luna:purr.example  (mobile)\n    emojis don't work on mobile\n" +
+          'r2  2026-10-14 12:00  [ultimit]  resolved by @mino:s 2026-10-14 13:00  @luna:purr.example\n    line one\n    line two\n'
       );
       assert.doesNotMatch(await (await fetch(`${url}?project=PURRLOR`)).text(), /ultimit/);
       assert.equal(await (await fetch(`${url}?project=nte`)).text(), "No bug reports for 'nte'.\n");
@@ -317,7 +317,12 @@ describe('marking reports resolved', () => {
     await log.append(REPORT);
     await log.append({ kind: 'posted', id: REPORT.id, eventId: '$n' });
     const edits: string[] = [];
-    const room = { edit: async (eventId: string, body: string) => void edits.push(`${eventId} ${body.split('\n')[0]}`) };
+    // '$old' is a notice from before ✅s, its event ID never kept: the room still has its text.
+    const notices: Record<string, string> = { $old: bugNotice({ ...REPORT, id: 'r0', text: 'older one' }) };
+    const room = {
+      edit: async (eventId: string, body: string) => void edits.push(`${eventId} ${body.split('\n')[0]}`),
+      noticeText: async (eventId: string) => notices[eventId],
+    };
     return { log, edits, desk: new BugDesk(log, room, admins, () => new Date('2026-10-15T09:00:00Z')) };
   }
 
@@ -349,5 +354,97 @@ describe('marking reports resolved', () => {
     assert.equal((await d.handle(reply('$m3', '$n', 'reopen, still broken')))?.status, 'open');
     assert.equal((await d.handle(reply('$m4', '$n', 'done')))?.status, 'resolved');
     assert.equal((await log.recent(5))[0].resolvedBy, MINO);
+  });
+});
+
+describe('older reports, and resolving from the command line', () => {
+  const MINO = '@mino:purr.example';
+
+  async function setup(editFails = false) {
+    const log = new BugReportLog(join(dir, `cli-${Math.random().toString(36).slice(2)}.jsonl`));
+    const old = { ...REPORT, id: 'a1b2c3d4e5f6', text: 'emojis are off center on mobile', platform: 'browser', version: '5327571' };
+    const linked = { ...REPORT, id: 'b1b2c3d4e5f6' };
+    await log.append(old); // from before ✅s: no 'posted' line
+    await log.append(linked);
+    await log.append({ kind: 'posted', id: linked.id, eventId: '$linked' });
+    const edits: string[] = [];
+    const room = {
+      edit: async (eventId: string, body: string) => {
+        if (editFails) throw new Error('room gone');
+        edits.push(`${eventId} ${body.split('\n')[0]}`);
+      },
+      noticeText: async (eventId: string) => (eventId === '$old' ? bugNotice(old) : eventId === '$someone' ? undefined : 'some other notice'),
+    };
+    return { log, edits, desk: new BugDesk(log, room, [MINO], () => new Date('2026-10-15T09:00:00Z')), old, linked };
+  }
+  const reply = (id: string, to: string, body: string) => ({
+    event_id: id,
+    type: 'm.room.message',
+    sender: MINO,
+    content: { msgtype: 'm.text', body, 'm.relates_to': { 'm.in_reply_to': { event_id: to } } },
+  });
+
+  it('finds an older report by its notice when someone replies "fixed" to it, and links it', async () => {
+    const { log, edits, desk: d, old } = await setup();
+    assert.equal(await d.handle(reply('$m1', '$unknown', 'fixed')), undefined);
+    assert.equal((await d.handle(reply('$m2', '$old', 'fixed')))?.status, 'resolved');
+    assert.match(edits[0], /^\$old ✅ Resolved by @mino:purr.example · Bug report \[purrlor\]/);
+    const bug = (await log.read()).bugs.find((b) => b.id === old.id);
+    assert.deepEqual([bug?.eventId, bug?.status], ['$old', 'resolved']);
+    // Linked now: reopening by reply finds it straight away.
+    assert.equal((await d.handle(reply('$m3', '$old', 'reopen')))?.status, 'open');
+  });
+
+  it('resolves and reopens by ID, saying when nothing changed, with the reason on the notice', async () => {
+    const { log, edits, desk: d, old, linked } = await setup();
+    const first = await d.set(linked.id, 'resolve', 'mino', 'fixed in 1a2b3c');
+    assert.deepEqual([first.changed, first.edited, first.bug?.status], [true, true, 'resolved']);
+    assert.equal(edits[0], '$linked ✅ Resolved by mino: fixed in 1a2b3c · Bug report [purrlor] from @luna:purr.example');
+    assert.deepEqual([(await d.set(linked.id, 'resolve', 'mino')).changed], [false]);
+    // One the room never linked: resolved in the list, nothing to edit.
+    const older = await d.set(old.id, 'resolve', 'mino');
+    assert.deepEqual([older.changed, older.edited], [true, false]);
+    assert.equal((await d.set('ffffffffffff', 'resolve', 'mino')).bug, undefined);
+    const bugs = await log.recent(10);
+    assert.deepEqual(bugs.map((b) => [b.status, b.resolvedBy, b.note]), [['resolved', 'mino', undefined], ['resolved', 'mino', 'fixed in 1a2b3c']]);
+    assert.equal((await d.set(linked.id, 'reopen', 'mino')).bug?.status, 'open');
+    assert.equal((await log.recent(10, undefined, true)).length, 1);
+  });
+
+  it('keeps the change when the notice can’t be edited', async () => {
+    const { log, desk: d, linked } = await setup(true);
+    assert.deepEqual(await d.set(linked.id, 'resolve', 'mino').then((r) => [r.changed, r.edited]), [true, false]);
+    assert.equal((await log.recent(10)).find((b) => b.id === linked.id)?.status, 'resolved');
+  });
+
+  it('purrlor bugs resolve/reopen: by ID, in the audit log, with clear answers', async () => {
+    const { desk: d, linked } = await setup();
+    const store = new AdminStore(join(dir, `ctl-${Math.random().toString(36).slice(2)}`));
+    const server = controlApp({ store, bugDesk: d, serverName: async () => 'purr.example' } as unknown as ControlDeps).listen(0);
+    await new Promise((done) => server.once('listening', done));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/bugs`;
+    const post = (path: string, form: Record<string, string> = {}) =>
+      fetch(`${base}/${path}`, { method: 'POST', body: new URLSearchParams({ actor: 'mino', ...form }) }).then(async (r) => [r.status, await r.text()]);
+    try {
+      assert.deepEqual(await post(`${linked.id}/resolve`, { reason: 'fixed in 1a2b3c' }), [
+        200,
+        `${linked.id} [purrlor] resolved. Its notice in the Bug reports room says so too.\n`,
+      ]);
+      assert.deepEqual(await post(`${linked.id}/resolve`), [200, `${linked.id} is already resolved (by mino).\n`]);
+      assert.deepEqual(await post(`${linked.id}/reopen`), [200, `${linked.id} [purrlor] reopened. Its notice in the Bug reports room says so too.\n`]);
+      assert.equal((await post('ffffffffffff/resolve'))[0], 404);
+      assert.equal((await post('not-an-id/resolve'))[0], 400);
+      const audit = (await store.readAudit(10)).map((line) => JSON.parse(line) as Record<string, string>);
+      assert.deepEqual(
+        audit.map((a) => [a.actor, a.action, a.target, a.result, a.reason]),
+        [
+          ['mino', 'bugs.resolve', linked.id, 'resolved', 'fixed in 1a2b3c'],
+          ['mino', 'bugs.resolve', linked.id, 'already resolved', undefined],
+          ['mino', 'bugs.reopen', linked.id, 'reopened', undefined],
+        ]
+      );
+    } finally {
+      server.close();
+    }
   });
 });

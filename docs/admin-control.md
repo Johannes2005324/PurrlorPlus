@@ -154,7 +154,9 @@ here keeps them off this site's public web, whatever their own instance does.
 ### Bug reports
 
 `GET /bugs?limit=50&project=…&open=1` shows the last bug reports sent with `!bug` and whether each is resolved, for one project or all,
-([bug-reports.md](bug-reports.md)). Read-only, so no reason.
+([bug-reports.md](bug-reports.md)). Read-only, so no reason. `POST /bugs/:id/resolve` and
+`POST /bugs/:id/reopen` (reason optional) change one by its ID and edit its notice in the Bug
+reports room; `404` for an unknown ID, `200` saying so if it already stood that way.
 
 ### The audit log
 

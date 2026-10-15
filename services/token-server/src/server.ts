@@ -300,7 +300,7 @@ startPeering();
  */
 const CONTROL_SOCKET = process.env.CONTROL_SOCKET ?? (process.platform === 'win32' ? '' : '/control/purrlor.sock');
 if (CONTROL_SOCKET) {
-  listenOnControlSocket(CONTROL_SOCKET, controlApp({ store: adminStore, bugs: bugLog, ...controlDeps() })).then(
+  listenOnControlSocket(CONTROL_SOCKET, controlApp({ store: adminStore, bugs: bugLog, bugDesk, ...controlDeps() })).then(
     () => console.log(`Admin control socket at ${CONTROL_SOCKET}`),
     (err) => console.error(`Admin control socket not started: ${(err as Error).message}`)
   );

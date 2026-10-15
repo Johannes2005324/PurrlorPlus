@@ -43,8 +43,13 @@ works). The bot edits the report to start "✅ Resolved by @you". Reply "reopen"
 to open it again; it then starts "🔁 Reopened by @you".
 
 Only the accounts in `BUG_REPORT_ADMINS` can do this; anyone else's ✅ or reply is ignored. The
-reporter isn't told. Reports sent before this existed have no ✅ under them and can't be resolved
-from the room.
+reporter isn't told. A report sent before ✅s existed has none under it, but replying "fixed" to it
+works: the bot looks the notice up, finds its report by the text, and links the two from then on.
+
+On the server, `sudo purrlor bugs resolve <id>` and `sudo purrlor bugs reopen <id>` do the same by
+the report's ID (the first column of `purrlor bugs`), for any report, and edit its notice to say
+"✅ Resolved by <your login>". An optional `--reason "fixed in 1a2b3c"` is shown on the notice and
+in the list, and both go in the audit log (`bugs.resolve`, `bugs.reopen`).
 
 ## Reading them on the server
 
@@ -55,6 +60,15 @@ sudo purrlor bugs                 # the last 50, each open or resolved by whom
 sudo purrlor bugs purrlor         # one project
 sudo purrlor bugs --open          # only those not resolved yet
 sudo purrlor bugs --limit 200
+sudo purrlor bugs resolve a1b2c3d4e5f6 --reason "fixed in 1a2b3c"
+sudo purrlor bugs reopen a1b2c3d4e5f6
+```
+
+Each line of the list starts with the report's ID:
+
+```
+a1b2c3d4e5f6  2026-10-14 23:41  [purrlor]  open  @mino:purr.meowops.net  (browser, version 5327571)
+    emojis are off center on mobile
 ```
 
 They're kept in `bug-reports.jsonl` in the token server's data volume, one JSON line per report
