@@ -4,7 +4,7 @@ import { basename, dirname } from 'node:path';
 import express, { type Request, type Response } from 'express';
 import { mediaDeleteCommand, withAdminSession, type AdminCredentials, type AdminSession } from './adminRoom.js';
 import type { AdminStore } from './adminStore.js';
-import type { BugReportLog } from './bugReports.js';
+import type { BugDesk, BugReportLog } from './bugReports.js';
 import {
   cleanActor,
   cleanReason,
@@ -67,6 +67,8 @@ export type ControlDeps = {
   peering?: PeeringDeps;
   /** Bug reports sent with `!bug` (bugReports.ts): what `purrlor bugs` reads. */
   bugs?: BugReportLog;
+  /** `purrlor bugs resolve`/`reopen`: changes one and edits its notice in the room. */
+  bugDesk?: Pick<BugDesk, 'set'>;
 };
 
 export type PeeringDeps = {
@@ -642,14 +644,35 @@ export function controlApp(deps: ControlDeps): express.Express {
       const reports = (await deps.bugs?.recent(limit, project, openOnly)) ?? [];
       const line = (r: (typeof reports)[number]) => {
         const about = [r.platform, r.version && `version ${r.version}`].filter(Boolean).join(', ');
-        const status = r.status === 'resolved' ? `resolved by ${r.resolvedBy}${r.resolvedAt ? ` ${formatTime(r.resolvedAt)}` : ''}` : 'open';
-        return `${formatTime(r.at)}  [${r.project}]  ${status}  ${r.reporter}${about ? `  (${about})` : ''}\n    ${r.text.replace(/\n/g, '\n    ')}`;
+        const status =
+          r.status === 'resolved' ? `resolved by ${r.resolvedBy}${r.resolvedAt ? ` ${formatTime(r.resolvedAt)}` : ''}${r.note ? `: ${r.note}` : ''}` : 'open';
+        return `${r.id}  ${formatTime(r.at)}  [${r.project}]  ${status}  ${r.reporter}${about ? `  (${about})` : ''}\n    ${r.text.replace(/\n/g, '\n    ')}`;
       };
       const none = `No ${openOnly ? 'open ' : ''}bug reports${project ? ` for '${project}'` : openOnly ? '' : ' yet'}.`;
       const text = reports.length ? reports.map(line).join('\n') : none;
       reply(req, res, 200, text, { reports });
     })
   );
+
+  // Resolving or reopening one by its ID (the first column of the list), as tapping its ✅ in the
+  // room does. The reason is optional here: it's shown on the report, and kept in the audit log.
+  const bugChange = (kind: 'resolve' | 'reopen') =>
+    route(async (req, res, actor, body) => {
+      const id = req.params.id.trim().toLowerCase();
+      if (!/^[0-9a-f]{6,32}$/.test(id)) throw new ControlError(400, `'${req.params.id}' isn't a bug report ID: it's the first column of 'purrlor bugs'.`);
+      if (!deps.bugDesk) throw new ControlError(503, 'Bug reports aren’t set up in this token server.');
+      const note = cleanReason(body.reason) || undefined;
+      const { bug, changed, edited } = await deps.bugDesk.set(id, kind, actor, note);
+      if (!bug) throw new ControlError(404, `No bug report ${id}. 'purrlor bugs' lists them with their IDs.`);
+      const done = kind === 'resolve' ? 'resolved' : 'reopened';
+      await deps.store.audit({ actor, action: `bugs.${kind}`, target: id, reason: note, result: changed ? done : `already ${kind === 'resolve' ? 'resolved' : 'open'}` });
+      const text = !changed
+        ? `${id} is already ${kind === 'resolve' ? `resolved${bug.resolvedBy ? ` (by ${bug.resolvedBy})` : ''}` : 'open'}.`
+        : `${id} [${bug.project}] ${done}.${bug.eventId ? (edited ? ' Its notice in the Bug reports room says so too.' : " Its notice in the Bug reports room couldn't be edited, but the list has it.") : ''}`;
+      reply(req, res, 200, text, { id, status: bug.status, changed, edited });
+    });
+  app.post('/bugs/:id/resolve', bugChange('resolve'));
+  app.post('/bugs/:id/reopen', bugChange('reopen'));
 
   // --- The audit log ----------------------------------------------------------------------------
 

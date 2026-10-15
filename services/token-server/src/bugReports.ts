@@ -98,8 +98,8 @@ export type BugStatusRecord =
   /** The bot's notice for it, so a ✅ or a reply to that notice finds the report. */
   | { kind: 'posted'; id: string; eventId: string }
   /** `cause` is the room event that did it, so one seen again after a restart changes nothing. */
-  | { kind: 'resolved'; id: string; by: string; at: string; cause: string; reactionId?: string }
-  | { kind: 'reopened'; id: string; by: string; at: string; cause: string };
+  | { kind: 'resolved'; id: string; by: string; at: string; cause: string; reactionId?: string; note?: string }
+  | { kind: 'reopened'; id: string; by: string; at: string; cause: string; note?: string };
 
 /** A report with where it stands now. */
 export type TrackedBug = BugReport & {
@@ -109,6 +109,8 @@ export type TrackedBug = BugReport & {
   resolvedAt?: string;
   /** The ✅ that resolved it: taking it back reopens it. */
   reactionId?: string;
+  /** What `purrlor bugs resolve --reason` said about it. */
+  note?: string;
 };
 
 /** `bug-reports.jsonl`: one report or status change per line, only ever appended to. */
@@ -142,7 +144,7 @@ export class BugReportLog {
     const bugs = new Map<string, TrackedBug>();
     const causes = new Set<string>();
     for (const line of text.split('\n')) {
-      let record: (Partial<BugReport> & { kind?: string; eventId?: string; by?: string; at?: string; cause?: string; reactionId?: string }) | null;
+      let record: (Partial<BugReport> & { kind?: string; eventId?: string; by?: string; at?: string; cause?: string; reactionId?: string; note?: string }) | null;
       try {
         record = JSON.parse(line);
       } catch {
@@ -157,8 +159,8 @@ export class BugReportLog {
       if (!bug) continue;
       if (typeof record.cause === 'string') causes.add(record.cause);
       if (record.kind === 'posted' && typeof record.eventId === 'string') bug.eventId = record.eventId;
-      if (record.kind === 'resolved') Object.assign(bug, { status: 'resolved', resolvedBy: record.by, resolvedAt: record.at, reactionId: record.reactionId });
-      if (record.kind === 'reopened') Object.assign(bug, { status: 'open', resolvedBy: undefined, resolvedAt: undefined, reactionId: undefined });
+      if (record.kind === 'resolved') Object.assign(bug, { status: 'resolved', resolvedBy: record.by, resolvedAt: record.at, reactionId: record.reactionId, note: record.note });
+      if (record.kind === 'reopened') Object.assign(bug, { status: 'open', resolvedBy: undefined, resolvedAt: undefined, reactionId: undefined, note: undefined });
     }
     return { bugs: [...bugs.values()], causes };
   }
@@ -250,6 +252,15 @@ export class BugRoom {
     } as never);
   }
 
+  /** The text of a notice the bot itself posted in the room; undefined for anyone else's event. */
+  async noticeText(eventId: string): Promise<string | undefined> {
+    const roomId = this.roomId ?? (await this.storedRoom());
+    if (!roomId) return undefined;
+    const mx = await this.client();
+    const event = (await mx.fetchRoomEvent(roomId, eventId)) as RawRoomEvent;
+    return event.sender === mx.getUserId() && typeof event.content?.body === 'string' ? event.content.body : undefined;
+  }
+
   /** Calls `onEvent` with each new event in the bug reports room, and nothing from any other room. */
   async watch(onEvent: (event: RawRoomEvent) => void): Promise<void> {
     const mx = await this.client();
@@ -326,49 +337,101 @@ export class BugRoom {
   }
 }
 
+/** The report a change made, or undefined if it already stood that way. */
+const changed = (result: { bug: TrackedBug; changed: boolean }): TrackedBug | undefined => (result.changed ? result.bug : undefined);
+
+/** What BugDesk needs of the room: rewriting a notice, and reading one the log doesn't know. */
+export type BugDeskRoom = {
+  edit(eventId: string, body: string): Promise<void>;
+  /** The text of a notice the bot posted in the room, or undefined for anything else. */
+  noticeText(eventId: string): Promise<string | undefined>;
+};
+
+type BugChange = { kind: 'resolve' | 'reopen'; by: string; cause: string; reactionId?: string; note?: string };
+
 /**
- * Applies admins' ✅s and replies to the log and the notices. One at a time, and each room event
- * only once (its ID is kept with the change), so seeing the room's history again after a restart
- * changes nothing.
+ * Applies admins' ✅s and replies, and `purrlor bugs resolve`/`reopen`, to the log and the notices.
+ * One at a time, and each room event only once (its ID is kept with the change), so seeing the
+ * room's history again after a restart changes nothing.
  */
 export class BugDesk {
   private queue: Promise<unknown> = Promise.resolve();
 
   constructor(
     private readonly log: BugReportLog,
-    private readonly room: Pick<BugRoom, 'edit'>,
+    private readonly room: BugDeskRoom,
     private readonly admins: string[],
     private readonly now: () => Date = () => new Date()
   ) {}
+
+  private serial<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(fn);
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
 
   /** Handles one event from the bug reports room; resolves with the report it changed, if any. */
   handle(event: RawRoomEvent): Promise<TrackedBug | undefined> {
     const action = bugActionFrom(event, this.admins);
     if (!action) return Promise.resolve(undefined);
-    const run = this.queue.then(() => this.apply(action));
-    this.queue = run.catch(() => undefined);
-    return run;
+    return this.serial(async () => {
+      const { bugs, causes } = await this.log.read();
+      if (causes.has(action.cause)) return undefined;
+      if (action.kind === 'unreact') {
+        const bug = bugs.find((b) => b.status === 'resolved' && b.reactionId === action.reactionId);
+        return bug && changed(await this.change(bug, { kind: 'reopen', by: action.by, cause: action.cause }));
+      }
+      const bug = bugs.find((b) => b.eventId === action.eventId) ?? (await this.linkOlder(bugs, action.eventId));
+      return bug && changed(await this.change(bug, action));
+    });
   }
 
-  private async apply(action: BugAction): Promise<TrackedBug | undefined> {
-    const { bugs, causes } = await this.log.read();
-    if (causes.has(action.cause)) return undefined;
-    const bug =
-      action.kind === 'unreact'
-        ? bugs.find((b) => b.status === 'resolved' && b.reactionId === action.reactionId)
-        : bugs.find((b) => b.eventId === action.eventId);
-    if (!bug?.eventId) return undefined;
+  /**
+   * `purrlor bugs resolve <id>` / `reopen <id>`: by the server's admin, so no ✅ is needed and it
+   * works for a report the room never had one for. `changed` is false if it already was.
+   */
+  set(id: string, kind: 'resolve' | 'reopen', by: string, note?: string): Promise<{ bug?: TrackedBug; changed: boolean; edited: boolean }> {
+    return this.serial(async () => {
+      const bug = (await this.log.read()).bugs.find((b) => b.id === id);
+      if (!bug) return { changed: false, edited: false };
+      return this.change(bug, { kind, by, note, cause: `cli-${randomBytes(6).toString('hex')}` });
+    });
+  }
+
+  /**
+   * A report posted before its notice's event ID was kept (before ✅s existed): found by its
+   * notice's text, which is exactly what bugNotice made of it, and linked from now on.
+   */
+  private async linkOlder(bugs: TrackedBug[], eventId: string): Promise<TrackedBug | undefined> {
+    const text = await this.room.noticeText(eventId).catch(() => undefined);
+    const bug = text ? bugs.find((b) => !b.eventId && bugNotice(b) === text) : undefined;
+    if (!bug) return undefined;
+    await this.log.append({ kind: 'posted', id: bug.id, eventId });
+    bug.eventId = eventId;
+    return bug;
+  }
+
+  private async change(bug: TrackedBug, change: BugChange): Promise<{ bug: TrackedBug; changed: boolean; edited: boolean }> {
+    const resolving = change.kind === 'resolve';
+    if ((bug.status === 'resolved') === resolving) return { bug, changed: false, edited: false };
     const at = this.now().toISOString();
-    if (action.kind === 'resolve') {
-      if (bug.status === 'resolved') return undefined;
-      await this.log.append({ kind: 'resolved', id: bug.id, by: action.by, at, cause: action.cause, reactionId: action.reactionId });
-      await this.room.edit(bug.eventId, bugNotice(bug, { resolvedBy: action.by }));
-      return { ...bug, status: 'resolved', resolvedBy: action.by, resolvedAt: at, reactionId: action.reactionId };
+    const { by, cause, note } = change;
+    await this.log.append(
+      resolving ? { kind: 'resolved', id: bug.id, by, at, cause, reactionId: change.reactionId, note } : { kind: 'reopened', id: bug.id, by, at, cause, note }
+    );
+    const updated: TrackedBug = resolving
+      ? { ...bug, status: 'resolved', resolvedBy: by, resolvedAt: at, reactionId: change.reactionId, note }
+      : { ...bug, status: 'open', resolvedBy: undefined, resolvedAt: undefined, reactionId: undefined, note: undefined };
+    // The log is the record: a notice that can't be edited (the room's gone) leaves it right.
+    let edited = false;
+    if (bug.eventId) {
+      const shown = note ? `${by}: ${note}` : by;
+      edited = await this.room
+        .edit(bug.eventId, bugNotice(bug, resolving ? { resolvedBy: shown } : { reopenedBy: shown }))
+        .then(() => true)
+        .catch((err: unknown) => (console.warn(`Couldn't edit the notice for bug report ${bug.id}`, err), false));
     }
-    if (bug.status === 'open') return undefined;
-    await this.log.append({ kind: 'reopened', id: bug.id, by: action.by, at, cause: action.cause });
-    await this.room.edit(bug.eventId, bugNotice(bug, { reopenedBy: action.by }));
-    return { ...bug, status: 'open', resolvedBy: undefined, resolvedAt: undefined, reactionId: undefined };
+    return { bug: updated, changed: true, edited };
   }
 }
 

@@ -399,7 +399,7 @@ The installer adds a `purrlor` command:
 | `purrlor new-invite-code` | Replaces the sign-up code |
 | `purrlor open-signups` / `close-signups` | Allows or stops new sign-ups |
 | `purrlor emotes setup` | Creates the global emote library, owned by the admin (once; the installer already does it) |
-| `purrlor bugs` | Bug reports people sent with `!bug`, each open or resolved by whom (`bugs <project>`, `bugs --open`, `bugs --limit N`) |
+| `purrlor bugs` | Bug reports people sent with `!bug`, each open or resolved by whom (`bugs <project>`, `bugs --open`, `bugs --limit N`, `bugs resolve <id>`, `bugs reopen <id>`) |
 
 #### Bug reports
 
@@ -421,8 +421,12 @@ BUG_REPORT_ADMINS=@you:YOUR_DOMAIN    # who the bot invites to its "Bug reports"
 | The server | `sudo purrlor bugs <project>` | Only that project's |
 | The server | `sudo purrlor bugs --open` | Only those not resolved yet |
 | The server | `sudo purrlor bugs --limit N` | The last N instead of 50 |
+| The server | `sudo purrlor bugs resolve <id>` | Marks one resolved (its ID is the list's first column), and edits its notice in the room |
+| The server | `sudo purrlor bugs reopen <id>` | Opens it again |
 
-The options combine: `sudo purrlor bugs purrlor --open --limit 200`. See
+The list's options combine: `sudo purrlor bugs purrlor --open --limit 200`. `resolve` and
+`reopen` take an optional `--reason "fixed in 1a2b3c"`, which is shown on the report and kept in the
+audit log. See
 [`docs/bug-reports.md`](docs/bug-reports.md).
 
 ### Your Terms of Service

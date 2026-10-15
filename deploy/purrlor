@@ -164,8 +164,11 @@ Bug reports (root; docs/bug-reports.md) — people send them with !bug <project>
   purrlor bugs <project>               only that project's (one of BUG_PROJECTS in .env)
   purrlor bugs --open                  only those not resolved yet
   purrlor bugs --limit N               the last N instead of 50
-  They combine: purrlor bugs purrlor --open --limit 200. Resolve one in the Bug reports room:
-  tap the ✅ under it or reply "fixed"; reply "reopen" or take the ✅ back to open it again.
+  purrlor bugs resolve <id>            mark one resolved (its ID is the list's first column)
+  purrlor bugs reopen <id>             open it again
+  The list's options combine: purrlor bugs purrlor --open --limit 200. resolve and reopen take an
+  optional --reason "fixed in 1a2b3c", shown on the report. In the Bug reports room: tap the ✅
+  under one or reply "fixed"; reply "reopen" or take the ✅ back to open it again.
 
 Federation with other Purrlor instances (root; docs/federation.md):
   purrlor peers                        the instances this one federates with, and what the bot reads there
@@ -2064,8 +2067,19 @@ cmd_audit() {
 }
 
 cmd_bugs() {
-  local usage="Usage: purrlor bugs [project] [--open] [--limit N]"
+  local usage="Usage: purrlor bugs [project] [--open] [--limit N]
+       purrlor bugs resolve <id> [--reason \"why\"]
+       purrlor bugs reopen <id> [--reason \"why\"]"
   need_root bugs "$@"
+  case "${1:-}" in
+    resolve|reopen)
+      local action="$1"; shift
+      parse_opts "$@"
+      [ "${#POS[@]}" -eq 1 ] || die "$usage"
+      printf '%s' "${POS[0]}" | grep -Eq '^[0-9A-Fa-f]{6,32}$' || die "'${POS[0]}' isn't a bug report ID: it's the first column of 'purrlor bugs'."
+      ctl POST "/bugs/${POS[0]}/$action" ${REASON:+--data-urlencode "reason=$REASON"}
+      return ;;
+  esac
   local args=() open=0 arg
   for arg in "$@"; do
     if [ "$arg" = --open ]; then open=1; else args+=("$arg"); fi
