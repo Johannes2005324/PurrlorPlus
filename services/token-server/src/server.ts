@@ -21,6 +21,7 @@ import { clientErrorHandler } from './clientErrors.js';
 import { onlineCounter } from './online.js';
 import { BugDesk, BugReportLog, BugRoom, bugReportsRouter, parseBugAdmins, parseBugProjects } from './bugReports.js';
 import { serverNameOf } from './publicWeb.js';
+import { servedSpaceIds } from './tenancy.js';
 
 // The build this is (a commit, set by the image build), for `purrlor metrics` and error reports.
 const VERSION = process.env.PURRLOR_VERSION || undefined;
@@ -277,7 +278,15 @@ app.use(
     projects: parseBugProjects(process.env.BUG_PROJECTS),
     log: bugLog,
     caller: voiceCaller,
+    serverName,
     isLocal: async (userId) => serverNameOf(userId) === (await serverName()),
+    // A Space the bot serves (tenancy.ts: created here, joined), with the reporter in it.
+    spaceOf: async (userId, spaceId) => {
+      const mx = await getServiceClient();
+      if (!servedSpaceIds(mx).has(spaceId)) return undefined;
+      const space = mx.getRoom(spaceId);
+      return space?.getMember(userId)?.membership === 'join' ? { name: space.name } : undefined;
+    },
     deliver: (report) => bugRoom.deliver(report),
   })
 );
