@@ -151,6 +151,11 @@ here keeps them off this site's public web, whatever their own instance does.
 | `POST /peers/remove/:server` (reason) | Takes it off the list and has the bot leave every room created on that server. `404` if it isn't a peer |
 | `POST /peers/sync` | Reads every peer's directory now and joins what's new (otherwise every ten minutes). `207` if any failed |
 
+### Bug reports
+
+`GET /bugs?limit=50&project=…` shows the last bug reports sent with `!bug`, for one project or all
+([bug-reports.md](bug-reports.md)). Read-only, so no reason.
+
 ### The audit log
 
 `GET /audit?limit=50` shows the last entries.
@@ -166,6 +171,8 @@ In the token server's data volume (`/data`, root-only like the socket):
 | `blocked-media.txt` | Blocked `mxc://` URLs |
 | `media-deletions.json` | The deletion queue and how each deletion went |
 | `peers.json` | The approved peers: server name, address, name, who added it and when |
+| `bug-reports.jsonl` | One JSON line per bug report sent with `!bug`, only ever appended to |
+| `bug-room.json` | The ID of the bot's "Bug reports" room |
 | `audit.log` | One JSON line per action: `at`, `actor`, `action`, `target`, `reason`, `result` |
 | `media-cache/` | Local copies of public sound and video (emptied when the service starts) |
 

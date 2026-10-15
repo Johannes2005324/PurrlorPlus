@@ -121,6 +121,12 @@ homeserver, which takes them from the same `X-Real-IP` (`MATRIX_IP_SOURCE`, defa
 see deploy/docker-compose.yml). So once `purrlor ips` shows visitors' own addresses, the sessions
 list does too, from each session's next request.
 
+## Bug reports
+
+`purrlor bugs [project] [--limit N]` lists the bug reports people sent with
+`!bug <project> <what's wrong>`, newest last. The service bot also posts each one in a "Bug reports"
+room for the accounts in `BUG_REPORT_ADMINS`. See [`docs/bug-reports.md`](bug-reports.md).
+
 ## The audit log
 
 `purrlor audit` shows the last 50 things done (`purrlor audit 200` for more): time, who, what, the

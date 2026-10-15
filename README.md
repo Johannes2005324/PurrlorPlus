@@ -17,7 +17,8 @@ for report review and automod, [`docs/calendar.md`](docs/calendar.md) for Space 
 reminders, [`docs/webhooks.md`](docs/webhooks.md) for incoming webhooks,
 [`docs/profile-pages.md`](docs/profile-pages.md) for profile pages and the page builder,
 [`docs/public-web.md`](docs/public-web.md) for what signed-out visitors can see,
-[`docs/federation.md`](docs/federation.md) for sharing the social side with other Purrlor instances, and
+[`docs/federation.md`](docs/federation.md) for sharing the social side with other Purrlor instances,
+[`docs/bug-reports.md`](docs/bug-reports.md) for `!bug` reports to the server's admins, and
 [`docs/deployment.md`](docs/deployment.md) for a full self-hosting guide.
 
 Purrlor was called NekoUs until it was renamed. Identifiers that live in stored data keep the old

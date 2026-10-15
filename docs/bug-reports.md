@@ -1,0 +1,65 @@
+# Bug reports
+
+Anyone signed in on this server can send the admins a bug report from any channel or DM:
+
+```
+!bug <project> <what's wrong>
+!bug purrlor emojis don't work on mobile
+```
+
+The first word after `!bug` is the **project** the report is filed under; the rest is the report.
+The message is never posted in the channel. The composer says "Bug report sent to the admins,
+filed under purrlor", or why it wasn't sent: an unknown project (it lists the ones there are), no
+text, more than 2000 characters, or too many reports at once (five, then one every two minutes).
+`!bugs …` and `!bug` in the middle of a message are ordinary messages.
+
+## Setting it up
+
+Two settings in `.env`, then `purrlor restart token-server`:
+
+| Setting | What it does |
+| --- | --- |
+| `BUG_PROJECTS` | What `<project>` may be, separated by commas or spaces: `purrlor,ultimit,nte`. Letters, digits, `-` and `_`, up to 32 characters; case doesn't matter. Default `purrlor` |
+| `BUG_REPORT_ADMINS` | Full Matrix IDs of the people to tell: `@you:YOUR_DOMAIN,@other:YOUR_DOMAIN` |
+
+With the first report, the service bot makes a private, unencrypted room called **Bug reports** and
+invites everyone in `BUG_REPORT_ADMINS`. Accept the invite and each report arrives there as a notice:
+
+```
+🐞 Bug report [purrlor] from @luna:purr.example (mobile, version 1a2b3c4)
+emojis don't work on mobile
+```
+
+"mobile", "desktop app" or "browser" and the app's version come from the app, so you needn't ask.
+Anyone added to `BUG_REPORT_ADMINS` later, or who declined or left the room, is invited again with the
+next report; to stop getting them, take yourself off the list. If the bot is removed from the room,
+it makes a new one. The room isn't encrypted because the service bot has no encryption keys.
+
+## Reading them on the server
+
+Every report is also kept, whether or not the room could be reached:
+
+```sh
+sudo purrlor bugs                 # the last 50
+sudo purrlor bugs purrlor         # one project
+sudo purrlor bugs --limit 200
+```
+
+They're kept in `bug-reports.jsonl` in the token server's data volume, one JSON line per report
+(`id`, `at`, `project`, `reporter`, `text`, `platform`, `version`), and only ever added to. The
+room's ID is in `bug-room.json`; delete that file to have the bot make a fresh room.
+
+## How it works
+
+The bot never reads anyone's messages (docs/voice-architecture.md), and couldn't in an encrypted
+room anyway. So the app catches `!bug` as it's sent (`apps/web/src/matrix/bugReport.ts`) and posts
+it to the token server with a Matrix OpenID token, the same proof of who's sending as the online
+count uses. The token server (`services/token-server/src/bugReports.ts`) checks it, keeps it, and has
+the bot post it. That means `!bug` works only from Purrlor, not from other Matrix apps, and only for
+accounts on this server.
+
+`POST /api/public/bugs` takes `{ openid_token, project, text, platform?, version? }` and answers
+`{ id, project, delivered }`. `delivered` is false when the report was kept but the room couldn't
+be told, for example because `BUG_REPORT_ADMINS` is empty. It refuses with `400` (bad project or
+text, with `projects`), `401` (login didn't check out), `403` (an account on another server) or
+`429`. `GET /api/public/bugs` lists the projects.
