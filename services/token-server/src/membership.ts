@@ -216,7 +216,13 @@ async function createBotClient(): Promise<MatrixClient> {
 
 function getBotClient(): Promise<MatrixClient> {
   if (!botClientPromise) {
-    botClientPromise = createBotClient();
+    // A login that failed is tried again by the next caller, not kept: a token server started
+    // before its bot account exists (a fresh install, the e2e and federation setups) would
+    // otherwise go without a bot until restarted.
+    botClientPromise = createBotClient().catch((err: unknown) => {
+      botClientPromise = null;
+      throw err;
+    });
   }
   return botClientPromise;
 }
