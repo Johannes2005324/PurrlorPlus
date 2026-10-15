@@ -96,3 +96,22 @@
   background: var(--nu-color-bg-tertiary);
   color: var(--nu-color-text-primary);
 }
+
+/* Phones: the toolbar's 😀 sits at the screen's left edge, and a panel lined up with its right
+   edge opened off the screen, one column of emoji showing. Centred on the screen instead. */
+@media (max-width: 900px) {
+  .nu-reaction-picker__panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    transform: translate(-50%, -50%);
+    max-width: calc(100vw - 2 * var(--nu-space-4));
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .nu-reaction-picker__panel--full .nu-emoji-picker {
+    width: min(320px, calc(100vw - 2 * var(--nu-space-4) - 2 * var(--nu-space-2)));
+  }
+}

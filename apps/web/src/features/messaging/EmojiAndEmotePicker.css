@@ -140,3 +140,21 @@
 .nu-emoji-emote-picker__manage:hover {
   color: var(--nu-color-text-primary);
 }
+
+/* Phones: lined up with the 😀 button's right edge, the panel hung off to the left with a gap on
+   the right. Across the composer instead, from the composer's own edges (.nu-composer-wrapper). */
+@media (max-width: 900px) {
+  .nu-emoji-emote-picker {
+    position: static;
+  }
+
+  .nu-emoji-emote-picker__panel {
+    left: var(--nu-space-4);
+    right: var(--nu-space-4);
+  }
+
+  .nu-emoji-emote-picker__panel .nu-emoji-picker,
+  .nu-emoji-emote-picker__emotes {
+    width: auto;
+  }
+}
