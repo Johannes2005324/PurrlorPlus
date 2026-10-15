@@ -123,9 +123,10 @@ list does too, from each session's next request.
 
 ## Bug reports
 
-`purrlor bugs [project] [--limit N]` lists the bug reports people sent with
-`!bug <project> <what's wrong>`, newest last. The service bot also posts each one in a "Bug reports"
-room for the accounts in `BUG_REPORT_ADMINS`. See [`docs/bug-reports.md`](bug-reports.md).
+`purrlor bugs [project] [--open] [--limit N]` lists the bug reports people sent with
+`!bug <project> <what's wrong>`, newest last, each open or resolved by whom. The service bot also
+posts each one in a "Bug reports" room for the accounts in `BUG_REPORT_ADMINS`, where tapping the ✅
+under one marks it resolved. See [`docs/bug-reports.md`](bug-reports.md).
 
 ## The audit log
 

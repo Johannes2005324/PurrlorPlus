@@ -631,23 +631,22 @@ export function controlApp(deps: ControlDeps): express.Express {
 
   // --- Bug reports ------------------------------------------------------------------------------
 
-  // What people sent with `!bug <project> <text>`, newest last. Reading them changes nothing, so no
+  // What people sent with `!bug <project> <text>`, newest last, and whether each is resolved. Reading them changes nothing, so no
   // reason is asked for, as with the audit log.
   app.get(
     '/bugs',
     route(async (req, res) => {
       const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 5000);
       const project = one(req.query.project)?.trim().toLowerCase() || undefined;
-      const reports = (await deps.bugs?.recent(limit, project)) ?? [];
+      const openOnly = one(req.query.open) === '1';
+      const reports = (await deps.bugs?.recent(limit, project, openOnly)) ?? [];
       const line = (r: (typeof reports)[number]) => {
         const about = [r.platform, r.version && `version ${r.version}`].filter(Boolean).join(', ');
-        return `${formatTime(r.at)}  [${r.project}]  ${r.reporter}${about ? `  (${about})` : ''}\n    ${r.text.replace(/\n/g, '\n    ')}`;
+        const status = r.status === 'resolved' ? `resolved by ${r.resolvedBy}${r.resolvedAt ? ` ${formatTime(r.resolvedAt)}` : ''}` : 'open';
+        return `${formatTime(r.at)}  [${r.project}]  ${status}  ${r.reporter}${about ? `  (${about})` : ''}\n    ${r.text.replace(/\n/g, '\n    ')}`;
       };
-      const text = reports.length
-        ? reports.map(line).join('\n')
-        : project
-          ? `No bug reports for '${project}'.`
-          : 'No bug reports yet.';
+      const none = `No ${openOnly ? 'open ' : ''}bug reports${project ? ` for '${project}'` : openOnly ? '' : ' yet'}.`;
+      const text = reports.length ? reports.map(line).join('\n') : none;
       reply(req, res, 200, text, { reports });
     })
   );

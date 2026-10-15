@@ -156,7 +156,7 @@ Moderation (root; docs/admin.md) — every change needs a reason, which goes in 
   purrlor takedown run                 delete the queued files from the homeserver (admin password)
   purrlor reports [--pages]            page reports from the homeserver's admin room (admin password)
   purrlor audit [N]                    the last N things done (default 50)
-  purrlor bugs [project] [--limit N]   bug reports people sent with !bug (docs/bug-reports.md)
+  purrlor bugs [project] [--open]      bug reports people sent with !bug, and which are resolved
   purrlor stats                        registered accounts, online now, public pages: totals only (admin password)
   purrlor ips [seconds]                watch which addresses reach the token server, and through which hops (default 60)
 
@@ -2057,14 +2057,18 @@ cmd_audit() {
 }
 
 cmd_bugs() {
-  local usage="Usage: purrlor bugs [project] [--limit N]"
+  local usage="Usage: purrlor bugs [project] [--open] [--limit N]"
   need_root bugs "$@"
-  parse_opts "$@"
+  local args=() open=0 arg
+  for arg in "$@"; do
+    if [ "$arg" = --open ]; then open=1; else args+=("$arg"); fi
+  done
+  parse_opts "${args[@]}"
   [ "${#POS[@]}" -le 1 ] || die "$usage"
   local n="${LIMIT:-50}" project="${POS[0]:-}"
   printf '%s' "$n" | grep -Eq '^[0-9]{1,4}$' || die "$usage"
   [ -z "$project" ] || printf '%s' "$project" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$' || die "$usage"
-  ctl GET /bugs --data-urlencode "limit=$n" ${project:+--data-urlencode "project=$project"}
+  ctl GET /bugs --data-urlencode "limit=$n" ${project:+--data-urlencode "project=$project"} $([ "$open" = 1 ] && echo --data-urlencode open=1)
 }
 
 # The dispatcher and the `exit` after it are one command (same line as `esac`), so bash has read

@@ -35,18 +35,33 @@ Anyone added to `BUG_REPORT_ADMINS` later, or who declined or left the room, is 
 next report; to stop getting them, take yourself off the list. If the bot is removed from the room,
 it makes a new one. The room isn't encrypted because the service bot has no encryption keys.
 
+## Marking one resolved
+
+The bot puts a ✅ under each report. Tap it to mark the report resolved, or reply to the report
+with "fixed", "resolved" or "done" (anything starting with one of those words, so "fixed in 1a2b3c"
+works). The bot edits the report to start "✅ Resolved by @you". Reply "reopen", or take your ✅ back,
+to open it again; it then starts "🔁 Reopened by @you".
+
+Only the accounts in `BUG_REPORT_ADMINS` can do this; anyone else's ✅ or reply is ignored. The
+reporter isn't told. Reports sent before this existed have no ✅ under them and can't be resolved
+from the room.
+
 ## Reading them on the server
 
 Every report is also kept, whether or not the room could be reached:
 
 ```sh
-sudo purrlor bugs                 # the last 50
+sudo purrlor bugs                 # the last 50, each open or resolved by whom
 sudo purrlor bugs purrlor         # one project
+sudo purrlor bugs --open          # only those not resolved yet
 sudo purrlor bugs --limit 200
 ```
 
 They're kept in `bug-reports.jsonl` in the token server's data volume, one JSON line per report
-(`id`, `at`, `project`, `reporter`, `text`, `platform`, `version`), and only ever added to. The
+(`id`, `at`, `project`, `reporter`, `text`, `platform`, `version`), and only ever added to. What
+happens to a report afterwards goes in the same file as lines with a `kind`: `posted` (the
+notice's event ID), `resolved` and `reopened` (who, when, and the room event that did it, so
+seeing the room's history again after a restart changes nothing). The
 room's ID is in `bug-room.json`; delete that file to have the bot make a fresh room.
 
 ## How it works
@@ -56,7 +71,8 @@ room anyway. So the app catches `!bug` as it's sent (`apps/web/src/matrix/bugRep
 it to the token server with a Matrix OpenID token, the same proof of who's sending as the online
 count uses. The token server (`services/token-server/src/bugReports.ts`) checks it, keeps it, and has
 the bot post it. That means `!bug` works only from Purrlor, not from other Matrix apps, and only for
-accounts on this server.
+accounts on this server. The bot does read the Bug reports room, which it made for the admins,
+to see the ✅s and replies; no other room's messages.
 
 `POST /api/public/bugs` takes `{ openid_token, project, text, platform?, version? }` and answers
 `{ id, project, delivered }`. `delivered` is false when the report was kept but the room couldn't
