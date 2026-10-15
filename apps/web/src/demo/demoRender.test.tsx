@@ -436,4 +436,23 @@ describe('Account Settings against the demo world', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove movie night' }));
     await waitFor(() => expect(screen.queryByText('movie night')).not.toBeInTheDocument());
   });
+
+  it('saves only what was changed: the name and status the server has are left alone', async () => {
+    const onClose = vi.fn();
+    const { mx } = renderWithDemo(<AccountSettingsModal onClose={onClose} />);
+    const name = (await screen.findByRole('textbox', { name: 'Display name' })) as HTMLInputElement;
+    // The form opens on the fallback handle and fills in the real name once the profile arrives.
+    const { displayname } = await mx.getProfileInfo(mx.getUserId()!);
+    await waitFor(() => expect(name.value).toBe(displayname));
+    const setDisplayName = vi.spyOn(mx, 'setDisplayName');
+    const setPresence = vi.spyOn(mx, 'setPresence');
+    vi.spyOn(mx, 'getPresence').mockResolvedValue({ presence: 'online', status_msg: 'napping' } as Awaited<ReturnType<typeof mx.getPresence>>);
+
+    fireEvent.change(document.querySelector('[data-nu-role="account-settings-presence"]')!, { target: { value: 'unavailable' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(setDisplayName).not.toHaveBeenCalled();
+    expect(setPresence).toHaveBeenCalledWith({ presence: 'unavailable', status_msg: 'napping' });
+  });
 });
