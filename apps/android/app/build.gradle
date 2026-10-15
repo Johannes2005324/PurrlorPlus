@@ -2,8 +2,9 @@ plugins {
     id 'com.android.application'
 }
 
-// The server this app opens (gradle.properties). Only a host name: the app is the site at
-// https://<host>/, and the site vouches for the app with /.well-known/assetlinks.json.
+// The server the app suggests on first launch (gradle.properties); people can choose another, as
+// in the Windows app. Only a host name: a server's site vouches for the app with
+// /.well-known/assetlinks.json.
 def host = providers.gradleProperty('purrlor.host').get()
 if (!(host ==~ /^[A-Za-z0-9.-]+(:[0-9]+)?$/)) {
     throw new GradleException("purrlor.host must be a host name like purr.example, not '${host}'")
@@ -24,21 +25,18 @@ android {
 
     defaultConfig {
         applicationId providers.gradleProperty('purrlor.applicationId').get()
-        minSdk 23
+        minSdk 24
         targetSdk 36
         versionCode 1
         versionName '1.0.0'
 
         manifestPlaceholders = [host: host]
         resValue 'string', 'appName', appName
-        resValue 'string', 'launchUrl', "${siteUrl}/"
+        resValue 'string', 'defaultHost', host
         resValue 'string', 'providerAuthority', "${applicationId}.fileprovider"
-        // Which site this app may open full screen; the site says the same back in assetlinks.json.
+        // The suggested site, for Android's link verification; each site says it back in assetlinks.json.
         resValue 'string', 'assetStatements', jsonRes(
             """[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"web","site":"${siteUrl}"}}]""")
-        // Sharing to the app goes to the site's own share target (manifest.webmanifest, public/sw.js).
-        resValue 'string', 'shareTarget', jsonRes(
-            """{"action":"${siteUrl}/share-target","method":"POST","enctype":"multipart/form-data","params":{"title":"share_title","text":"share_text","url":"share_url","files":[{"name":"share_media","accept":["image/*","video/*"]}]}}""")
     }
 
     signingConfigs {
@@ -67,5 +65,8 @@ android {
 
 dependencies {
     // Google's Trusted Web Activity launcher: opens the site in the phone's Chrome, full screen.
-    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.3'
+    // Used directly by PurrlorActivity (the versions androidbrowserhelper 2.7.3 brings).
+    implementation 'androidx.browser:browser:1.10.0'
+    implementation 'androidx.core:core:1.17.0'
 }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="serverTitle">Which Purrlor server?</string>
+    <string name="serverHint">The address you open Purrlor at in a browser. Each server keeps its own sign-in.</string>
+    <string name="serverPlaceholder">purr.example</string>
+    <string name="serverConnect">Connect</string>
+    <string name="serverChecking">Checking…</string>
+    <string name="serverInvalid">That doesn\'t look like a server address, e.g. purr.meowops.net.</string>
+    <string name="serverUnreachable">Couldn\'t find Purrlor at %1$s. Check the address, or try again in a moment.</string>
+    <string name="changeServer">Change server</string>
+</resources>

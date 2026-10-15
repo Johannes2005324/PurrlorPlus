@@ -1,10 +1,22 @@
 # Purrlor for Android
 
 An Android app for **Purrlor**: a [Trusted Web Activity](https://developer.chrome.com/docs/android/trusted-web-activity)
-(TWA) that opens the Purrlor site (`https://purr.meowops.net/` by default) full screen in the
-phone's Chrome. There's no app code of its own, only Google's launcher library
-(`androidbrowserhelper`), so the app is the website: every deploy of the web client reaches the
-app at once, with nothing to rebuild, and the web client and the Windows app don't change.
+(TWA) that opens a Purrlor site full screen in the phone's Chrome. Apart from asking which server,
+it's Google's launcher library (`androidbrowserhelper`), so the app is the website: every deploy of
+the web client reaches the app at once, with nothing to rebuild, and the web client and the Windows
+app don't change.
+
+## Choosing a server
+
+As in the Windows app, the first launch asks **which Purrlor server**: the address you'd open
+Purrlor at in a browser, `purr.meowops.net` (filled in) or your own deployment's `app.example.com`.
+The app checks it's a Purrlor site (it has the web client's `/config.json`) before opening it.
+Long-press the app's icon for **Change server**. Chrome keeps each server's sign-in apart, so
+switching back picks up where you left off.
+
+The server decides the rest, as in a browser: one locked to its own homeserver
+(`PURRLOR_HOMESERVER_URL`) signs you in there, and an unlocked one asks for a homeserver on its
+login screen.
 
 It's light because it is Chrome: no second browser engine in the app, an install of about a
 megabyte, and the same memory the site uses in a Chrome tab.
@@ -19,7 +31,7 @@ The same as Purrlor in Chrome on the phone, since that's what it is:
   On Android 13 and later the app asks for permission to show them
 - Voice and video calls, screen share where Chrome on Android has it
 - Sharing pictures, videos and links to Purrlor from other apps, through the site's share target
-- Links to `https://purr.meowops.net/...` open in the app
+- Links to `https://purr.meowops.net/...` open in the app (links to other servers open in Chrome)
 
 Not yet, as with the site in Chrome: a call keeps going while the app is in the background only as
 long as Android lets Chrome keep it, which varies by phone and battery settings. Keeping calls
@@ -27,9 +39,11 @@ alive for good needs a native foreground service, which a TWA doesn't have.
 
 ## Full screen, or Chrome's address bar
 
-The app opens the site without an address bar only once the site vouches for it: Android fetches
-`https://purr.meowops.net/.well-known/assetlinks.json` and checks it names this app and the key
-it's signed with. Until it does, the app still works, with Chrome's address bar showing.
+The app opens a server's site without an address bar only once that site vouches for it: Chrome
+fetches `https://<server>/.well-known/assetlinks.json` and checks it names this app and the key
+it's signed with. Until it does, the app still works, with Chrome's address bar showing. Each
+server does this for itself, so another deployment that wants this app full screen sets the same
+two settings, with this app's package name and fingerprints.
 
 The web container writes that file from two settings in the deployment's `.env`
 (`apps/web/deploy/40-purrlor-config.sh`), then `purrlor restart web` (or recreate the container):
@@ -85,18 +99,16 @@ you want it. To sign a release locally, set `PURRLOR_KEYSTORE` (the path to `upl
 `PURRLOR_KEYSTORE_PASSWORD`, `PURRLOR_KEY_ALIAS` and `PURRLOR_KEY_PASSWORD`, then
 `gradle assembleRelease bundleRelease`.
 
-## For another deployment
+## Your own build
 
-The app opens one server. For your own, set these in `gradle.properties` (or pass
-`-Ppurrlor.host=app.example.com` and so on to `gradle`), and use the same package name in that
-server's `PURRLOR_ANDROID_PACKAGE`:
+This app works with any Purrlor server, so most deployments don't need a build of their own; they
+set the two assetlinks settings above with this app's package name and fingerprints. To publish
+your own (your name, your server suggested and handling its links), set these in
+`gradle.properties` (or pass `-Ppurrlor.host=app.example.com` and so on to `gradle`), and use the
+same package name in your server's `PURRLOR_ANDROID_PACKAGE`:
 
 | Property | Default |
 | --- | --- |
-| `purrlor.host` | `purr.meowops.net`, the address you open Purrlor at in a browser |
+| `purrlor.host` | `purr.meowops.net`: filled in on first launch, and whose links open in the app |
 | `purrlor.applicationId` | `net.meowops.purrlor`; yours must differ to be on Play, and is permanent once it is |
 | `purrlor.appName` | `Purrlor` |
-
-Unlike the Windows app, it doesn't ask which server: a TWA is bound to the one site that vouches
-for it. Someone on another server can still use that server's site in Chrome, and install it from
-Chrome's menu (Add to Home screen), which the site already supports.
