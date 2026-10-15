@@ -86,7 +86,7 @@ describe('sendBugReport from a Space on another server', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     await expect(sendBugReport(mx, 'purrlor', 'voice drops', '!general')).resolves.toEqual({ project: 'purrlor', server: 'purr.example' });
-    const [url, init] = fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[fetchMock.mock.calls.length - 1] as unknown as [string, RequestInit];
     expect(url).toBe('https://purr.example/api/public/bugs');
     expect(init.method).toBe('POST');
     expect(JSON.parse(String(init.body))).toMatchObject({ project: 'purrlor', text: 'voice drops', space_id: '!cats' });
