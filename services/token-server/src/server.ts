@@ -256,12 +256,21 @@ app.post('/api/public/client-errors', clientErrorHandler(errorLog));
 /** `!bug <project> <text>` from the app, passed on to the server's admins (bugReports.ts, docs/bug-reports.md). */
 const DATA_DIR = process.env.PURRLOR_DATA_DIR ?? '/data';
 const bugLog = new BugReportLog(join(DATA_DIR, 'bug-reports.jsonl'));
-const bugRoom = new BugRoom(join(DATA_DIR, 'bug-room.json'), getServiceClient, parseBugAdmins(process.env.BUG_REPORT_ADMINS));
-// ✅s and "fixed" replies in that room mark reports resolved (bugReports.ts, BugDesk).
-const bugDesk = new BugDesk(bugLog, bugRoom, parseBugAdmins(process.env.BUG_REPORT_ADMINS));
-bugRoom
-  .watch((event) => void bugDesk.handle(event).catch((err: unknown) => console.warn('Bug report status not updated', err)))
-  .catch((err: unknown) => console.warn(`Not watching the bug reports room: ${(err as Error).message}`));
+const bugAdmins = parseBugAdmins(process.env.BUG_REPORT_ADMINS);
+const bugRoom = new BugRoom(join(DATA_DIR, 'bug-room.json'), getServiceClient, bugAdmins);
+// ✅s and "fixed" replies in that room mark reports resolved (bugReports.ts, BugDesk). Only with
+// admins to watch for, and retried each minute until the bot is there: it may not be yet when
+// this starts, and logging it in here mustn't be what decides whether it comes up at all.
+const bugDesk = new BugDesk(bugLog, bugRoom, bugAdmins);
+const watchBugRoom = (): void => {
+  bugRoom
+    .watch((event) => void bugDesk.handle(event).catch((err: unknown) => console.warn('Bug report status not updated', err)))
+    .catch((err: unknown) => {
+      console.warn(`Not watching the bug reports room yet: ${(err as Error).message}`);
+      setTimeout(watchBugRoom, 60_000).unref();
+    });
+};
+if (bugAdmins.length) watchBugRoom();
 app.use(
   '/api/public/bugs',
   bugReportsRouter({
