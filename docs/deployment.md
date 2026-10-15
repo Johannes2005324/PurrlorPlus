@@ -250,6 +250,11 @@ Fill in every value `.env.example` calls out, using what you generated above:
 The last three are what let the app set up voice and notifications by itself (Step 10). Leave
 them out and people configure both by hand in the app instead.
 
+Optional, for an Android app built for this server (`apps/android/README.md`):
+`PURRLOR_ANDROID_PACKAGE` (its package name) and `PURRLOR_ANDROID_CERT_SHA256` (the SHA-256
+fingerprints of its signing keys, comma-separated). The web container serves them as
+`/.well-known/assetlinks.json`, which lets the app open the site full screen.
+
 Leave `VOICE_MODERATOR_POWER_LEVEL` at its default unless you specifically want a different
 threshold.
 

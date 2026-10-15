@@ -36,6 +36,12 @@ server to connect to (`purr.meowops.net` by default, or your own deployment); cl
 name in the title bar to switch later. It stays in the tray for notifications and can start with
 Windows. See [`apps/desktop/README.md`](apps/desktop/README.md).
 
+### Android app
+Install **Purrlor.apk** from the [releases page](https://github.com/m0nnnna/Purrlor/releases). On
+first launch it asks which Purrlor server to open (`purr.meowops.net` by default, or your own
+deployment); long-press its icon for Change server. It opens the server full screen in the phone's
+Chrome, with notifications, voice and sharing from other apps, as on the website. See [`apps/android/README.md`](apps/android/README.md).
+
 ### Signing in
 Open the app and enter a **homeserver** (defaults to `matrix.org`, but works with any Matrix
 homeserver — including a self-hosted one) plus a username/password to log in, or use "Register"

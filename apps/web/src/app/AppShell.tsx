@@ -7,6 +7,7 @@ import { MemberList } from '../features/members/MemberList';
 import { DesktopNotifications } from '../features/notifications/DesktopNotifications';
 import { AppBadge } from '../features/notifications/AppBadge';
 import { AutoAway } from '../features/account/AutoAway';
+import { useNavigationHistory } from './navigationHistory';
 import { NotificationRules } from '../features/notifications/NotificationRules';
 import { FeedGovernance } from '../features/feed/FeedGovernance';
 import { FollowPublisher } from '../features/feed/FollowPublisher';
@@ -68,6 +69,7 @@ export function AppShell() {
   // or the global feed. The last two aren't rooms, so a room check alone left them invisible.
   const mainPaneHasContent = !!selectedRoomId || spaceView !== null || globalFeedOpen || profileOpen || postOpen;
   useOpenRoomFromNotification();
+  useNavigationHistory();
   useVisualViewport();
   useComposeShortcut();
   useShareTarget();
