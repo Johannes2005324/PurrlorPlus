@@ -2,6 +2,7 @@ import type { EncryptedAttachmentInfo } from 'browser-encrypt-attachment';
 import { MsgType } from 'matrix-js-sdk';
 import { usePauseWhenOffscreen } from '../../components/usePauseWhenOffscreen';
 import { useAttachmentUrl } from '../../matrix/hooks/useAttachmentUrl';
+import { AttachmentDownloadButton } from './AttachmentDownloadButton';
 import './FileMessage.css';
 
 type FileMessageProps = {
@@ -39,12 +40,21 @@ export function FileMessage({ msgtype, body, url, file, mimetype, size }: FileMe
     );
   }
 
-  if (msgtype === MsgType.Video) {
-    return <video ref={mediaRef} className="nu-file-message__video" data-nu-role="timeline-file" src={src} controls />;
-  }
-
-  if (msgtype === MsgType.Audio) {
-    return <audio ref={mediaRef} className="nu-file-message__audio" data-nu-role="timeline-file" src={src} controls />;
+  // The player's own download button is hidden (`nodownload`): it fetches the media URL without
+  // the token and saved the server's error as a .json file. Ours fetches it properly.
+  if (playable) {
+    const player =
+      msgtype === MsgType.Video ? (
+        <video ref={mediaRef} className="nu-file-message__video" data-nu-role="timeline-file" src={src} controls controlsList="nodownload" />
+      ) : (
+        <audio ref={mediaRef} className="nu-file-message__audio" data-nu-role="timeline-file" src={src} controls controlsList="nodownload" />
+      );
+    return (
+      <div className="nu-file-message__media">
+        {player}
+        <AttachmentDownloadButton source={{ url, file, mimetype }} name={body} />
+      </div>
+    );
   }
 
   return (

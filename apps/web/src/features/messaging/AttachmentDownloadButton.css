@@ -1,0 +1,26 @@
+.nu-attachment-download {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nu-space-1);
+  padding: var(--nu-space-1);
+  border: 1px solid var(--nu-color-border);
+  border-radius: var(--nu-radius-md);
+  background: var(--nu-color-bg-tertiary);
+  color: var(--nu-color-text-primary);
+  cursor: pointer;
+}
+
+.nu-attachment-download:hover {
+  border-color: var(--nu-color-accent);
+}
+
+.nu-attachment-download:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.nu-attachment-download__failed {
+  font-size: var(--nu-font-size-xs);
+  color: var(--nu-color-text-muted);
+}

@@ -7,6 +7,12 @@
   border-radius: var(--nu-radius-md);
 }
 
+.nu-file-message__media {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--nu-space-2);
+}
+
 .nu-file-message__video {
   display: block;
   max-width: 360px;

@@ -2,6 +2,7 @@ import { useRef, useState, type CSSProperties } from 'react';
 import { Icon } from '../../components/Icon';
 import { usePauseWhenOffscreen } from '../../components/usePauseWhenOffscreen';
 import { inlineThumbnailSize, useAttachmentUrl } from '../../matrix/hooks/useAttachmentUrl';
+import { AttachmentDownloadButton } from '../messaging/AttachmentDownloadButton';
 import { AttachmentLightbox } from '../messaging/AttachmentLightbox';
 import { attachmentMxc, POST_MEDIA_PX, type PostAttachment } from '../../matrix/postMedia';
 import { TaggedImageOverlay } from './ImageTags';
@@ -35,20 +36,23 @@ function MediaItem({ attachment, single }: { attachment: PostAttachment; single:
 
   if (attachment.kind === 'video') {
     return (
-      <div className="nu-post-media__item" style={style}>
+      <div className="nu-post-media__item nu-post-media__item--video" style={style}>
         {/* Nothing autoplays: it plays, with its sound, when the reader presses play, and stops
             when it's off screen (including when the whole feed is hidden under a chat). Loops, since
-            many are GIF replacements. */}
+            many are GIF replacements. The player's own download is hidden: it can't send the
+            token, and saved the server's error as a .json file. */}
         <video
           ref={videoRef}
           className="nu-post-media__video"
           data-nu-role="post-media-video"
           src={src}
           controls
+          controlsList="nodownload"
           loop
           playsInline
           preload="metadata"
         />
+        <AttachmentDownloadButton className="nu-post-media__download" source={source} name={attachment.name} />
       </div>
     );
   }

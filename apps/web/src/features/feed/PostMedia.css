@@ -46,6 +46,16 @@
   aspect-ratio: auto;
 }
 
+.nu-post-media__item--video {
+  position: relative;
+}
+
+.nu-post-media__download {
+  position: absolute;
+  top: var(--nu-space-2);
+  right: var(--nu-space-2);
+}
+
 .nu-post-media__item--image {
   cursor: zoom-in;
 }
