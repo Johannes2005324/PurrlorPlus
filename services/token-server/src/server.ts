@@ -19,7 +19,7 @@ import { standardMetrics } from './metrics.js';
 import { finalErrorHandler, opsRouter } from './ops.js';
 import { clientErrorHandler } from './clientErrors.js';
 import { onlineCounter } from './online.js';
-import { BugReportLog, BugRoom, bugReportsRouter, parseBugAdmins, parseBugProjects } from './bugReports.js';
+import { BugDesk, BugReportLog, BugRoom, bugReportsRouter, parseBugAdmins, parseBugProjects } from './bugReports.js';
 import { serverNameOf } from './publicWeb.js';
 
 // The build this is (a commit, set by the image build), for `purrlor metrics` and error reports.
@@ -257,6 +257,11 @@ app.post('/api/public/client-errors', clientErrorHandler(errorLog));
 const DATA_DIR = process.env.PURRLOR_DATA_DIR ?? '/data';
 const bugLog = new BugReportLog(join(DATA_DIR, 'bug-reports.jsonl'));
 const bugRoom = new BugRoom(join(DATA_DIR, 'bug-room.json'), getServiceClient, parseBugAdmins(process.env.BUG_REPORT_ADMINS));
+// ✅s and "fixed" replies in that room mark reports resolved (bugReports.ts, BugDesk).
+const bugDesk = new BugDesk(bugLog, bugRoom, parseBugAdmins(process.env.BUG_REPORT_ADMINS));
+bugRoom
+  .watch((event) => void bugDesk.handle(event).catch((err: unknown) => console.warn('Bug report status not updated', err)))
+  .catch((err: unknown) => console.warn(`Not watching the bug reports room: ${(err as Error).message}`));
 app.use(
   '/api/public/bugs',
   bugReportsRouter({

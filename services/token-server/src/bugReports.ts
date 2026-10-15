@@ -3,7 +3,7 @@ import { constants } from 'node:fs';
 import { mkdir, open, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { Router, type Request, type Response } from 'express';
-import type { MatrixClient } from 'matrix-js-sdk';
+import { RoomEvent, type MatrixClient } from 'matrix-js-sdk';
 import { clientIp } from './clientIp.js';
 import { terminalSafe } from './control.js';
 import { RateLimiter } from './webhooks.js';
@@ -21,6 +21,11 @@ import { RateLimiter } from './webhooks.js';
  * `purrlor bugs`, and a notice from the bot in a private "Bug reports" room it makes and invites
  * the admins in BUG_REPORT_ADMINS to. The file is the record; the room is the doorbell, so a
  * report still counts when the room can't be reached.
+ *
+ * In that room an admin marks a report resolved by tapping the ✅ the bot puts under it, or by
+ * replying "fixed" (or "resolved", "done"); replying "reopen", or taking the ✅ back, reopens it.
+ * The bot reads that room only, which it made for the admins, and records each change in the same
+ * file, so `purrlor bugs` shows what's still open.
  */
 
 /** What `!bug` files under when BUG_PROJECTS isn't set. */
@@ -82,23 +87,42 @@ export function checkBugReport(
 }
 
 /** The bot's notice to the admins. Plain text only, so nothing in a report is ever read as HTML. */
-export function bugNotice(report: BugReport): string {
+export function bugNotice(report: BugReport, status?: { resolvedBy?: string; reopenedBy?: string }): string {
   const about = [report.platform, report.version && `version ${report.version}`].filter(Boolean).join(', ');
-  return `🐞 Bug report [${report.project}] from ${report.reporter}${about ? ` (${about})` : ''}\n${report.text}`;
+  const head = status?.resolvedBy ? `✅ Resolved by ${status.resolvedBy} · ` : status?.reopenedBy ? `🔁 Reopened by ${status.reopenedBy} · ` : '🐞 ';
+  return `${head}Bug report [${report.project}] from ${report.reporter}${about ? ` (${about})` : ''}\n${report.text}`;
 }
 
-/** `bug-reports.jsonl`: one report per line, only ever appended to. */
+/** What happened to a report after it arrived, one line each beside the reports themselves. */
+export type BugStatusRecord =
+  /** The bot's notice for it, so a ✅ or a reply to that notice finds the report. */
+  | { kind: 'posted'; id: string; eventId: string }
+  /** `cause` is the room event that did it, so one seen again after a restart changes nothing. */
+  | { kind: 'resolved'; id: string; by: string; at: string; cause: string; reactionId?: string }
+  | { kind: 'reopened'; id: string; by: string; at: string; cause: string };
+
+/** A report with where it stands now. */
+export type TrackedBug = BugReport & {
+  status: 'open' | 'resolved';
+  eventId?: string;
+  resolvedBy?: string;
+  resolvedAt?: string;
+  /** The ✅ that resolved it: taking it back reopens it. */
+  reactionId?: string;
+};
+
+/** `bug-reports.jsonl`: one report or status change per line, only ever appended to. */
 export class BugReportLog {
   private queue: Promise<unknown> = Promise.resolve();
 
   constructor(readonly file: string) {}
 
-  append(report: BugReport): Promise<void> {
+  append(record: BugReport | BugStatusRecord): Promise<void> {
     const run = this.queue.then(async () => {
       await mkdir(dirname(this.file), { recursive: true, mode: 0o700 });
       const handle = await open(this.file, constants.O_WRONLY | constants.O_APPEND | constants.O_CREAT | constants.O_NOFOLLOW, 0o600);
       try {
-        await handle.appendFile(`${JSON.stringify(report)}\n`);
+        await handle.appendFile(`${JSON.stringify(record)}\n`);
       } finally {
         await handle.close();
       }
@@ -107,24 +131,85 @@ export class BugReportLog {
     return run;
   }
 
-  /** The newest `limit` reports, oldest first, for one project or all of them. */
-  async recent(limit: number, project?: string): Promise<BugReport[]> {
+  /** Every report as it stands, oldest first, and the room events already acted on. */
+  async read(): Promise<{ bugs: TrackedBug[]; causes: Set<string> }> {
     let text = '';
     try {
       text = await readFile(this.file, 'utf8');
     } catch {
-      return [];
+      return { bugs: [], causes: new Set() };
     }
-    const reports = text.split('\n').flatMap((line) => {
+    const bugs = new Map<string, TrackedBug>();
+    const causes = new Set<string>();
+    for (const line of text.split('\n')) {
+      let record: (Partial<BugReport> & { kind?: string; eventId?: string; by?: string; at?: string; cause?: string; reactionId?: string }) | null;
       try {
-        const report = JSON.parse(line) as BugReport;
-        return typeof report?.project === 'string' && typeof report.text === 'string' ? [report] : [];
+        record = JSON.parse(line);
       } catch {
-        return [];
+        continue;
       }
-    });
-    return reports.filter((report) => !project || report.project === project).slice(-limit);
+      if (!record || typeof record.id !== 'string') continue;
+      if (!('kind' in record) && typeof record.project === 'string' && typeof record.text === 'string') {
+        bugs.set(record.id, { ...(record as BugReport), status: 'open' });
+        continue;
+      }
+      const bug = bugs.get(record.id);
+      if (!bug) continue;
+      if (typeof record.cause === 'string') causes.add(record.cause);
+      if (record.kind === 'posted' && typeof record.eventId === 'string') bug.eventId = record.eventId;
+      if (record.kind === 'resolved') Object.assign(bug, { status: 'resolved', resolvedBy: record.by, resolvedAt: record.at, reactionId: record.reactionId });
+      if (record.kind === 'reopened') Object.assign(bug, { status: 'open', resolvedBy: undefined, resolvedAt: undefined, reactionId: undefined });
+    }
+    return { bugs: [...bugs.values()], causes };
   }
+
+  /** The newest `limit` reports, oldest first, for one project or all of them, open ones only if asked. */
+  async recent(limit: number, project?: string, openOnly = false): Promise<TrackedBug[]> {
+    const { bugs } = await this.read();
+    return bugs.filter((bug) => (!project || bug.project === project) && (!openOnly || bug.status === 'open')).slice(-limit);
+  }
+}
+
+/** Ticks that count as "resolved". The bot's own goes first, so an admin taps the same one. */
+export const RESOLVE_KEYS = ['✅', '✔️', '☑️'];
+const RESOLVE_REPLY = /^!?(resolved?|fixed|done|closed?)\b/i;
+const REOPEN_REPLY = /^!?(re-?open(ed)?|not fixed|unresolved?)\b/i;
+
+/** An admin's doing in the bug reports room, read off one room event. */
+export type BugAction =
+  | { kind: 'resolve'; eventId: string; by: string; cause: string; reactionId?: string }
+  | { kind: 'reopen'; eventId: string; by: string; cause: string }
+  /** A reaction taken back: reopens the report it resolved, if it was that one. */
+  | { kind: 'unreact'; reactionId: string; by: string; cause: string };
+
+export type RawRoomEvent = { event_id?: string; type?: string; sender?: string; redacts?: string; content?: Record<string, unknown> };
+
+/** What an event in the bug reports room asks for, if it's from an admin and asks for anything. */
+export function bugActionFrom(event: RawRoomEvent, admins: string[]): BugAction | undefined {
+  const { event_id: cause, sender: by, content = {} } = event;
+  if (!cause || !by || !admins.includes(by)) return undefined;
+  const relation = content['m.relates_to'] as { rel_type?: string; event_id?: string; key?: string; 'm.in_reply_to'?: { event_id?: string } } | undefined;
+  if (event.type === 'm.reaction') {
+    if (relation?.rel_type !== 'm.annotation' || !relation.event_id || !RESOLVE_KEYS.includes(relation.key ?? '')) return undefined;
+    return { kind: 'resolve', eventId: relation.event_id, by, cause, reactionId: cause };
+  }
+  if (event.type === 'm.room.redaction') {
+    const reactionId = event.redacts ?? (typeof content.redacts === 'string' ? content.redacts : undefined);
+    return reactionId ? { kind: 'unreact', reactionId, by, cause } : undefined;
+  }
+  if (event.type === 'm.room.message') {
+    const target = relation?.['m.in_reply_to']?.event_id;
+    if (!target || relation?.rel_type === 'm.replace' || typeof content.body !== 'string') return undefined;
+    // Older clients quote what's replied to first, as "> " lines.
+    const said = content.body
+      .split('\n')
+      .filter((line) => !line.startsWith('>'))
+      .join('\n')
+      .trim();
+    if (RESOLVE_REPLY.test(said)) return { kind: 'resolve', eventId: target, by, cause };
+    if (REOPEN_REPLY.test(said)) return { kind: 'reopen', eventId: target, by, cause };
+  }
+  return undefined;
 }
 
 /**
@@ -135,6 +220,8 @@ export class BugReportLog {
  */
 export class BugRoom {
   private queue: Promise<unknown> = Promise.resolve();
+  /** The room's ID once known, for telling its events from every other room's. */
+  private roomId: string | undefined;
 
   constructor(
     private readonly stateFile: string,
@@ -142,14 +229,39 @@ export class BugRoom {
     private readonly admins: string[]
   ) {}
 
-  /** Posts one report. Throws if there's nobody to send it to or the homeserver says no. */
-  deliver(report: BugReport): Promise<void> {
+  /** Posts one report, with a ✅ under it to tap; resolves with the notice's event ID. Throws if
+   *  there's nobody to send it to or the homeserver says no. */
+  deliver(report: BugReport): Promise<string> {
     const run = this.queue.then(() => this.send(report));
     this.queue = run.catch(() => undefined);
     return run;
   }
 
-  private async send(report: BugReport): Promise<void> {
+  /** Rewrites a notice the bot posted (to say it's resolved, or open again). */
+  async edit(eventId: string, body: string): Promise<void> {
+    const roomId = this.roomId ?? (await this.storedRoom());
+    if (!roomId) return;
+    const notice = { msgtype: 'm.notice', body, 'm.mentions': {} };
+    await (await this.client()).sendMessage(roomId, {
+      ...notice,
+      body: `* ${body}`,
+      'm.new_content': notice,
+      'm.relates_to': { rel_type: 'm.replace', event_id: eventId },
+    } as never);
+  }
+
+  /** Calls `onEvent` with each new event in the bug reports room, and nothing from any other room. */
+  async watch(onEvent: (event: RawRoomEvent) => void): Promise<void> {
+    const mx = await this.client();
+    this.roomId ??= await this.storedRoom();
+    mx.on(RoomEvent.Timeline, (event, _room, toStartOfTimeline, removed) => {
+      // Older history being paged in, or an event taken out again, isn't something new to act on.
+      if (toStartOfTimeline || removed || !this.roomId || event.getRoomId() !== this.roomId) return;
+      onEvent(event.getEffectiveEvent() as RawRoomEvent);
+    });
+  }
+
+  private async send(report: BugReport): Promise<string> {
     if (!this.admins.length) throw new Error('BUG_REPORT_ADMINS is empty, so there is nobody to tell');
     const mx = await this.client();
     let roomId = await this.storedRoom();
@@ -157,9 +269,15 @@ export class BugRoom {
     if (!roomId || !(await this.stillIn(mx, roomId))) {
       roomId = await this.create(mx);
     }
+    this.roomId = roomId;
     await this.inviteMissing(mx, roomId);
     // `m.mentions` present and empty: a report saying "@room" doesn't ping anyone.
-    await mx.sendMessage(roomId, { msgtype: 'm.notice', body: bugNotice(report), 'm.mentions': {} } as never);
+    const { event_id: eventId } = await mx.sendMessage(roomId, { msgtype: 'm.notice', body: bugNotice(report), 'm.mentions': {} } as never);
+    // The "button": tapping the same reaction is one touch in any Matrix app.
+    await mx.sendEvent(roomId, 'm.reaction' as never, { 'm.relates_to': { rel_type: 'm.annotation', event_id: eventId, key: RESOLVE_KEYS[0] } } as never).catch((err: unknown) => {
+      console.warn(`Couldn't put the ✅ under bug report ${report.id}`, err);
+    });
+    return eventId;
   }
 
   private async storedRoom(): Promise<string | undefined> {
@@ -208,6 +326,52 @@ export class BugRoom {
   }
 }
 
+/**
+ * Applies admins' ✅s and replies to the log and the notices. One at a time, and each room event
+ * only once (its ID is kept with the change), so seeing the room's history again after a restart
+ * changes nothing.
+ */
+export class BugDesk {
+  private queue: Promise<unknown> = Promise.resolve();
+
+  constructor(
+    private readonly log: BugReportLog,
+    private readonly room: Pick<BugRoom, 'edit'>,
+    private readonly admins: string[],
+    private readonly now: () => Date = () => new Date()
+  ) {}
+
+  /** Handles one event from the bug reports room; resolves with the report it changed, if any. */
+  handle(event: RawRoomEvent): Promise<TrackedBug | undefined> {
+    const action = bugActionFrom(event, this.admins);
+    if (!action) return Promise.resolve(undefined);
+    const run = this.queue.then(() => this.apply(action));
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
+
+  private async apply(action: BugAction): Promise<TrackedBug | undefined> {
+    const { bugs, causes } = await this.log.read();
+    if (causes.has(action.cause)) return undefined;
+    const bug =
+      action.kind === 'unreact'
+        ? bugs.find((b) => b.status === 'resolved' && b.reactionId === action.reactionId)
+        : bugs.find((b) => b.eventId === action.eventId);
+    if (!bug?.eventId) return undefined;
+    const at = this.now().toISOString();
+    if (action.kind === 'resolve') {
+      if (bug.status === 'resolved') return undefined;
+      await this.log.append({ kind: 'resolved', id: bug.id, by: action.by, at, cause: action.cause, reactionId: action.reactionId });
+      await this.room.edit(bug.eventId, bugNotice(bug, { resolvedBy: action.by }));
+      return { ...bug, status: 'resolved', resolvedBy: action.by, resolvedAt: at, reactionId: action.reactionId };
+    }
+    if (bug.status === 'open') return undefined;
+    await this.log.append({ kind: 'reopened', id: bug.id, by: action.by, at, cause: action.cause });
+    await this.room.edit(bug.eventId, bugNotice(bug, { reopenedBy: action.by }));
+    return { ...bug, status: 'open', resolvedBy: undefined, resolvedAt: undefined, reactionId: undefined };
+  }
+}
+
 export type BugReportDeps = {
   projects: string[];
   log: BugReportLog;
@@ -215,8 +379,8 @@ export type BugReportDeps = {
   caller(openIdToken: unknown): Promise<string>;
   /** Whether that account is on this server. */
   isLocal(userId: string): Promise<boolean>;
-  /** Tells the admins; a failure here is logged, and the report is kept anyway. */
-  deliver(report: BugReport): Promise<void>;
+  /** Tells the admins, resolving with the notice's event ID; a failure here is logged, and the report is kept anyway. */
+  deliver(report: BugReport): Promise<string | undefined>;
   now?(): Date;
 };
 
@@ -263,7 +427,8 @@ export function bugReportsRouter(deps: BugReportDeps, limits = { account: accoun
     }
     let delivered = true;
     try {
-      await deps.deliver(report);
+      const eventId = await deps.deliver(report);
+      if (eventId) await deps.log.append({ kind: 'posted', id: report.id, eventId });
     } catch (err) {
       delivered = false;
       console.warn(`Bug report ${report.id} saved but not posted to the admins: ${(err as Error).message}`);

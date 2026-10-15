@@ -8,6 +8,8 @@ import { join } from 'node:path';
 import express from 'express';
 import type { MatrixClient } from 'matrix-js-sdk';
 import {
+  BugDesk,
+  bugActionFrom,
   BugReportLog,
   BugRoom,
   bugNotice,
@@ -80,6 +82,8 @@ describe('bugNotice', () => {
       bugNotice({ ...REPORT, platform: 'mobile', version: 'abc123' }),
       "🐞 Bug report [purrlor] from @luna:purr.example (mobile, version abc123)\nemojis don't work on mobile"
     );
+    assert.equal(bugNotice(REPORT, { resolvedBy: '@mino:s' }), "✅ Resolved by @mino:s · Bug report [purrlor] from @luna:purr.example\nemojis don't work on mobile");
+    assert.match(bugNotice(REPORT, { reopenedBy: '@mino:s' }), /^🔁 Reopened by @mino:s · Bug report/);
     assert.equal(bugNotice(REPORT), "🐞 Bug report [purrlor] from @luna:purr.example\nemojis don't work on mobile");
   });
 });
@@ -116,8 +120,14 @@ function fakeBot(members: Record<string, Record<string, string>> = {}) {
     async invite(roomId: string, userId: string) {
       calls.push(`invite ${roomId} ${userId}`);
     },
-    async sendMessage(roomId: string, content: { body: string; 'm.mentions'?: object }) {
-      calls.push(`send ${roomId} ${content.body.split('\n')[0]} mentions=${JSON.stringify(content['m.mentions'])}`);
+    async sendMessage(roomId: string, content: { body: string; 'm.mentions'?: object; 'm.relates_to'?: { rel_type: string; event_id: string } }) {
+      const edit = content['m.relates_to']?.rel_type === 'm.replace' ? ` (edits ${content['m.relates_to'].event_id})` : '';
+      calls.push(`send ${roomId} ${content.body.split('\n')[0]} mentions=${JSON.stringify(content['m.mentions'])}${edit}`);
+      return { event_id: `$${calls.length}` };
+    },
+    async sendEvent(roomId: string, type: string, content: { 'm.relates_to': { event_id: string; key: string } }) {
+      calls.push(`${type} ${content['m.relates_to'].key} on ${content['m.relates_to'].event_id}`);
+      return { event_id: `$${calls.length}` };
     },
   };
   return { mx: mx as unknown as MatrixClient, calls, members };
@@ -128,13 +138,17 @@ describe('BugRoom', () => {
     const state = join(dir, 'room1', 'bug-room.json');
     const bot = fakeBot();
     const room = new BugRoom(state, async () => bot.mx, ['@mino:purr.example']);
-    await room.deliver(REPORT);
+    assert.equal(await room.deliver(REPORT), '$2');
     await room.deliver(REPORT);
     assert.deepEqual(bot.calls, [
       'create @mino:purr.example',
       'send !new:purr.example 🐞 Bug report [purrlor] from @luna:purr.example mentions={}',
+      'm.reaction ✅ on $2',
       'send !new:purr.example 🐞 Bug report [purrlor] from @luna:purr.example mentions={}',
+      'm.reaction ✅ on $4',
     ]);
+    await room.edit('$2', '✅ Resolved by @mino:purr.example · Bug report');
+    assert.equal(bot.calls.at(-1), 'send !new:purr.example * ✅ Resolved by @mino:purr.example · Bug report mentions={} (edits $2)');
     assert.deepEqual(JSON.parse(await readFile(state, 'utf8')), { roomId: '!new:purr.example' });
   });
 
@@ -181,6 +195,7 @@ describe('POST /api/public/bugs', () => {
     async deliver(report) {
       if (failDelivery) throw new Error('homeserver down');
       delivered.push(report);
+      return `$notice-${report.id}`;
     },
     now: () => new Date('2026-10-14T12:00:00Z'),
   };
@@ -212,7 +227,7 @@ describe('POST /api/public/bugs', () => {
     assert.equal(answer.delivered, true);
     assert.equal(delivered.at(-1)?.reporter, LUNA);
     assert.equal(delivered.at(-1)?.platform, 'mobile');
-    assert.deepEqual((await log.recent(5)).map((r) => r.id), [answer.id]);
+    assert.deepEqual((await log.recent(5)).map((r) => [r.id, r.eventId, r.status]), [[answer.id, `$notice-${answer.id}`, 'open']]);
   });
 
   it('keeps a report the admins could not be told about', async () => {
@@ -222,6 +237,7 @@ describe('POST /api/public/bugs', () => {
     assert.equal(res.status, 200);
     assert.equal(((await res.json()) as { delivered: boolean }).delivered, false);
     assert.equal((await log.recent(5)).at(-1)?.text, 'bar flickers');
+    assert.equal((await log.recent(5)).at(-1)?.eventId, undefined);
   });
 
   it('refuses a bad login, another server, and an unknown project', async () => {
@@ -243,6 +259,7 @@ describe('purrlor bugs (the control socket)', () => {
     const log = new BugReportLog(join(dir, 'ctl', 'bug-reports.jsonl'));
     await log.append({ ...REPORT, platform: 'mobile' });
     await log.append({ ...REPORT, id: 'r2', project: 'ultimit', text: 'line one\nline two' });
+    await log.append({ kind: 'resolved', id: 'r2', by: '@mino:s', at: '2026-10-14T13:00:00Z', cause: '$c' });
     const store = new AdminStore(join(dir, 'ctl'));
     const deps = { store, bugs: log, serverName: async () => 'purr.example' } as unknown as ControlDeps;
     const server = controlApp(deps).listen(0);
@@ -252,13 +269,85 @@ describe('purrlor bugs (the control socket)', () => {
       const all = await (await fetch(url)).text();
       assert.equal(
         all,
-        "2026-10-14 12:00  [purrlor]  @luna:purr.example  (mobile)\n    emojis don't work on mobile\n" +
-          '2026-10-14 12:00  [ultimit]  @luna:purr.example\n    line one\n    line two\n'
+        "2026-10-14 12:00  [purrlor]  open  @luna:purr.example  (mobile)\n    emojis don't work on mobile\n" +
+          '2026-10-14 12:00  [ultimit]  resolved by @mino:s 2026-10-14 13:00  @luna:purr.example\n    line one\n    line two\n'
       );
       assert.doesNotMatch(await (await fetch(`${url}?project=PURRLOR`)).text(), /ultimit/);
       assert.equal(await (await fetch(`${url}?project=nte`)).text(), "No bug reports for 'nte'.\n");
+      assert.doesNotMatch(await (await fetch(`${url}?open=1`)).text(), /ultimit/);
+      assert.equal(await (await fetch(`${url}?open=1&project=ultimit`)).text(), "No open bug reports for 'ultimit'.\n");
     } finally {
       server.close();
     }
+  });
+});
+
+describe('marking reports resolved', () => {
+  const MINO = '@mino:purr.example';
+  const admins = [MINO];
+  const react = (id: string, on: string, key = '✅', sender = MINO) => ({
+    event_id: id,
+    type: 'm.reaction',
+    sender,
+    content: { 'm.relates_to': { rel_type: 'm.annotation', event_id: on, key } },
+  });
+  const reply = (id: string, to: string, body: string, sender = MINO) => ({
+    event_id: id,
+    type: 'm.room.message',
+    sender,
+    content: { msgtype: 'm.text', body, 'm.relates_to': { 'm.in_reply_to': { event_id: to } } },
+  });
+  const redact = (id: string, what: string) => ({ event_id: id, type: 'm.room.redaction', sender: MINO, redacts: what, content: {} });
+
+  it('reads ticks, replies and taken-back reactions, from admins only', () => {
+    assert.deepEqual(bugActionFrom(react('$r', '$n'), admins), { kind: 'resolve', eventId: '$n', by: MINO, cause: '$r', reactionId: '$r' });
+    assert.equal(bugActionFrom(react('$r', '$n', '✔️'), admins)?.kind, 'resolve');
+    assert.equal(bugActionFrom(react('$r', '$n', '👍'), admins), undefined);
+    assert.equal(bugActionFrom(react('$r', '$n', '✅', '@luna:purr.example'), admins), undefined);
+    assert.deepEqual(bugActionFrom(reply('$m', '$n', 'Fixed in 5327572'), admins), { kind: 'resolve', eventId: '$n', by: MINO, cause: '$m' });
+    assert.equal(bugActionFrom(reply('$m', '$n', '> <@bot> 🐞 Bug report\n\ndone, thanks'), admins)?.kind, 'resolve');
+    assert.equal(bugActionFrom(reply('$m', '$n', 'reopen: still off on iOS'), admins)?.kind, 'reopen');
+    assert.equal(bugActionFrom(reply('$m', '$n', 'looking at it'), admins), undefined);
+    assert.equal(bugActionFrom({ ...reply('$m', '$n', 'fixed'), content: { msgtype: 'm.text', body: 'fixed' } }, admins), undefined);
+    assert.deepEqual(bugActionFrom(redact('$x', '$r'), admins), { kind: 'unreact', reactionId: '$r', by: MINO, cause: '$x' });
+  });
+
+  async function desk() {
+    const log = new BugReportLog(join(dir, `desk-${Math.random().toString(36).slice(2)}.jsonl`));
+    await log.append(REPORT);
+    await log.append({ kind: 'posted', id: REPORT.id, eventId: '$n' });
+    const edits: string[] = [];
+    const room = { edit: async (eventId: string, body: string) => void edits.push(`${eventId} ${body.split('\n')[0]}`) };
+    return { log, edits, desk: new BugDesk(log, room, admins, () => new Date('2026-10-15T09:00:00Z')) };
+  }
+
+  it('resolves with a ✅ once, however often the event is seen, and edits the notice', async () => {
+    const { log, edits, desk: d } = await desk();
+    assert.equal((await d.handle(react('$r', '$n')))?.status, 'resolved');
+    assert.equal(await d.handle(react('$r', '$n')), undefined); // seen again after a restart
+    assert.equal(await d.handle(react('$r2', '$n')), undefined); // already resolved
+    assert.deepEqual(edits, ['$n ✅ Resolved by @mino:purr.example · Bug report [purrlor] from @luna:purr.example']);
+    const [bug] = await log.recent(5);
+    assert.deepEqual([bug.status, bug.resolvedBy, bug.resolvedAt], ['resolved', MINO, '2026-10-15T09:00:00.000Z']);
+    assert.deepEqual(await log.recent(5, undefined, true), []);
+  });
+
+  it('reopens when that ✅ is taken back, but not for some other redaction', async () => {
+    const { log, edits, desk: d } = await desk();
+    await d.handle(react('$r', '$n'));
+    assert.equal(await d.handle(redact('$x1', '$other')), undefined);
+    assert.equal((await d.handle(redact('$x2', '$r')))?.status, 'open');
+    assert.equal(edits.at(-1), '$n 🔁 Reopened by @mino:purr.example · Bug report [purrlor] from @luna:purr.example');
+    assert.equal((await log.recent(5))[0].status, 'open');
+  });
+
+  it('resolves and reopens by reply, and ignores replies to anything else', async () => {
+    const { log, desk: d } = await desk();
+    assert.equal(await d.handle(reply('$m0', '$unrelated', 'fixed')), undefined);
+    assert.equal(await d.handle(reply('$m1', '$n', 'reopen')), undefined); // already open
+    assert.equal((await d.handle(reply('$m2', '$n', 'fixed')))?.status, 'resolved');
+    assert.equal((await d.handle(reply('$m3', '$n', 'reopen, still broken')))?.status, 'open');
+    assert.equal((await d.handle(reply('$m4', '$n', 'done')))?.status, 'resolved');
+    assert.equal((await log.recent(5))[0].resolvedBy, MINO);
   });
 });
