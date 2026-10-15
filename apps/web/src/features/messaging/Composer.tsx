@@ -192,8 +192,8 @@ export function Composer({
       setSending(true);
       setText('');
       try {
-        const project = await sendBugReport(mx, bug.project, bug.text);
-        setCommandNotice(`Bug report sent to the admins, filed under ${project}. Thanks!`);
+        const sent = await sendBugReport(mx, bug.project, bug.text, roomId);
+        setCommandNotice(`Bug report sent to the admins${sent.server ? ` of ${sent.server}` : ''}, filed under ${sent.project}. Thanks!`);
       } catch (err) {
         setText(body);
         setCommandError(err instanceof Error ? err.message : 'The bug report couldn’t be sent.');

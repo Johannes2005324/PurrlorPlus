@@ -191,7 +191,10 @@ describe('POST /api/public/bugs', () => {
       if (t?.access_token === 'far') return '@far:elsewhere.example';
       throw new Error('bad token');
     },
+    serverName: async () => 'purr.example',
     isLocal: async (userId) => userId.endsWith(':purr.example'),
+    // @far is in the Cats Space here, and in no other.
+    spaceOf: async (userId, spaceId) => (spaceId === '!cats' && userId === '@far:elsewhere.example' ? { name: 'Cats\nand dogs' } : undefined),
     async deliver(report) {
       if (failDelivery) throw new Error('homeserver down');
       delivered.push(report);
@@ -216,7 +219,7 @@ describe('POST /api/public/bugs', () => {
   const post = (body: unknown) => fetch(base, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
   it('lists the projects', async () => {
-    assert.deepEqual(await (await fetch(base)).json(), { projects: ['purrlor', 'ultimit'] });
+    assert.deepEqual(await (await fetch(base)).json(), { projects: ['purrlor', 'ultimit'], serverName: 'purr.example' });
   });
 
   it('files a report under its project, saved and passed on', async () => {
@@ -243,9 +246,24 @@ describe('POST /api/public/bugs', () => {
   it('refuses a bad login, another server, and an unknown project', async () => {
     assert.equal((await post({ openid_token: { access_token: 'x' }, project: 'purrlor', text: 'a' })).status, 401);
     assert.equal((await post({ openid_token: { access_token: 'far' }, project: 'purrlor', text: 'a' })).status, 403);
+    // Another server's account, naming a Space it isn't in (or one not served here).
+    assert.equal((await post({ openid_token: { access_token: 'far' }, project: 'purrlor', text: 'a', space_id: '!dogs' })).status, 403);
     const unknown = await post({ openid_token: { access_token: 'luna' }, project: 'nope', text: 'a' });
     assert.equal(unknown.status, 400);
     assert.deepEqual(((await unknown.json()) as { projects: string[] }).projects, ['purrlor', 'ultimit']);
+  });
+
+  it("takes one from another server's account sent from a Space here it's in, saying which", async () => {
+    const res = await post({ openid_token: { access_token: 'far' }, project: 'purrlor', text: 'voice drops', space_id: '!cats' });
+    assert.equal(res.status, 200);
+    const report = delivered.at(-1)!;
+    assert.equal(report.reporter, '@far:elsewhere.example');
+    assert.equal(report.space, '!cats');
+    assert.equal(report.spaceName, 'Cats and dogs');
+    assert.equal(bugNotice(report), '🐞 Bug report [purrlor] from @far:elsewhere.example in Cats and dogs\nvoice drops');
+    // Theirs still gets the project list when the project is wrong.
+    const unknown = await post({ openid_token: { access_token: 'far' }, project: 'nope', text: 'a', space_id: '!cats' });
+    assert.equal(unknown.status, 400);
   });
 
   it('limits how many one account sends', async () => {

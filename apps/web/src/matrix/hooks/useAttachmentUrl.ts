@@ -77,6 +77,36 @@ async function resolveAttachment(
   return blobUrl(mx, mxcUrl, full, useAuth, source);
 }
 
+/** `name` with an extension from `mimetype` when it has none (`video/mp4` → `.mp4`), so a saved
+ *  file opens in the right app. */
+export function attachmentFileName(name: string, mimetype?: string): string {
+  const base = name.trim() || 'file';
+  if (/\.[a-z0-9]{1,5}$/i.test(base) || !mimetype) return base;
+  const sub = mimetype.split(';')[0].split('/')[1]?.replace(/^x-/, '');
+  const ext = sub === 'quicktime' ? 'mov' : sub === 'mpeg' && mimetype.startsWith('audio/') ? 'mp3' : sub;
+  return ext && /^[a-z0-9]{1,5}$/i.test(ext) ? `${base}.${ext}` : base;
+}
+
+/**
+ * Saves an attachment to the device under `name`. A video or audio player points straight at the
+ * media URL, which only works because the service worker adds the token to the player's own
+ * requests; the browser's built-in "Download" fetches that URL again without it, and saved the
+ * homeserver's 401 error as a `.json` file. This fetches the bytes with the token (decrypting
+ * an encrypted file) and saves them instead.
+ */
+export async function saveAttachment(mx: ReturnType<typeof useMatrixClient>, source: AttachmentSource, name: string): Promise<void> {
+  const mxcUrl = source.file?.url ?? source.url;
+  if (!mxcUrl) throw new Error('No media URL');
+  const url = await resolveAttachment(mx, mxcUrl, source, {});
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = attachmentFileName(name, source.mimetype);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 /** The box an image in a message is drawn in (ImageMessage.tsx; must match .nu-image-message's
  *  max-width/max-height in ImageMessage.css). Here so matrix/mediaWarm.ts asks for the same
  *  thumbnail the timeline will. */

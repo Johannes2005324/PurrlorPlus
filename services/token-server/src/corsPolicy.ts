@@ -12,6 +12,10 @@ import type { Request } from 'express';
  * proving who's asking, and a token is only given for a voice channel in a Space this server serves
  * to a member of it (server.ts, membership.ts, tenancy.ts), whichever page asked.
  *
+ * **Bug reports (`/api/public/bugs`) too**, for the same reason: someone in one of this server's
+ * Spaces from another server sends `!bug` from their own server's app, to here (bugReports.ts).
+ * The same OpenID token proves who's asking, and only a member of a Space served here is taken.
+ *
  * Everything else keeps to `ALLOWED_ORIGINS` (comma-separated; `*` for any; `https://*.example.com`
  * for its subdomains).
  */
@@ -36,7 +40,7 @@ export function originAllowed(origin: string | undefined, allowed: string[]): bo
 
 /** Routes any page may call: see above. */
 export function openToAnyOrigin(path: string): boolean {
-  return path === '/api/livekit' || path.startsWith('/api/livekit/');
+  return path === '/api/livekit' || path.startsWith('/api/livekit/') || path === '/api/public/bugs' || path === '/api/public/bugs/';
 }
 
 export function corsOptions(allowed: string[]): CorsOptionsDelegate<Request> {

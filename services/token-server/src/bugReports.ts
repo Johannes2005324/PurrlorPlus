@@ -15,7 +15,9 @@ import { RateLimiter } from './webhooks.js';
  *
  * The app catches the command, not the bot: the bot never reads anyone's messages (membership.ts),
  * and it couldn't in an encrypted room anyway. The sender is proven with a Matrix OpenID token, as
- * the online ping is, so a report always names who sent it and only accounts on this server can.
+ * the online ping is, so a report always names who sent it. Accounts on this server can send one
+ * from anywhere; someone from another server only from a Space this server serves that they're in,
+ * whose app sends it here rather than to their own server (apps/web matrix/bugReport.ts).
  *
  * Each report is kept twice: one JSON line appended to `bug-reports.jsonl` in the data volume, for
  * `purrlor bugs`, and a notice from the bot in a private "Bug reports" room it makes and invites
@@ -33,6 +35,7 @@ export const DEFAULT_BUG_PROJECTS = ['purrlor'];
 export const MAX_BUG_TEXT = 2000;
 const PROJECT_NAME = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 const USER_ID = /^@[^:\s]+:[^\s]+$/;
+const ROOM_ID = /^![^\s]{1,254}$/;
 
 /** BUG_PROJECTS: names separated by commas or spaces, lower-cased; bad ones are left out. */
 export function parseBugProjects(raw: string | undefined): string[] {
@@ -59,6 +62,9 @@ export type BugReport = {
   version?: string;
   /** "mobile", "desktop app" or "browser": the app says which, from what it is running in. */
   platform?: string;
+  /** The Space it was sent from, when that's one this server serves. */
+  space?: string;
+  spaceName?: string;
 };
 
 /** No control characters but newlines and tabs, nothing a terminal or a notice could act on. */
@@ -90,7 +96,8 @@ export function checkBugReport(
 export function bugNotice(report: BugReport, status?: { resolvedBy?: string; reopenedBy?: string }): string {
   const about = [report.platform, report.version && `version ${report.version}`].filter(Boolean).join(', ');
   const head = status?.resolvedBy ? `✅ Resolved by ${status.resolvedBy} · ` : status?.reopenedBy ? `🔁 Reopened by ${status.reopenedBy} · ` : '🐞 ';
-  return `${head}Bug report [${report.project}] from ${report.reporter}${about ? ` (${about})` : ''}\n${report.text}`;
+  const where = report.spaceName ? ` in ${report.spaceName}` : '';
+  return `${head}Bug report [${report.project}] from ${report.reporter}${about ? ` (${about})` : ''}${where}\n${report.text}`;
 }
 
 /** What happened to a report after it arrived, one line each beside the reports themselves. */
@@ -440,8 +447,12 @@ export type BugReportDeps = {
   log: BugReportLog;
   /** Who sent it, from their OpenID token; throws if it doesn't check out. */
   caller(openIdToken: unknown): Promise<string>;
+  /** This server's name, so an app elsewhere can tell it reached the server it meant to. */
+  serverName(): Promise<string>;
   /** Whether that account is on this server. */
   isLocal(userId: string): Promise<boolean>;
+  /** A Space this server serves that the account is in, with its name; undefined otherwise. */
+  spaceOf(userId: string, spaceId: string): Promise<{ name?: string } | undefined>;
   /** Tells the admins, resolving with the notice's event ID; a failure here is logged, and the report is kept anyway. */
   deliver(report: BugReport): Promise<string | undefined>;
   now?(): Date;
@@ -452,14 +463,19 @@ const accountLimiter = new RateLimiter(5, 0.5);
 const addressLimiter = new RateLimiter(20, 5);
 
 /**
- *   GET  /api/public/bugs   { projects } — what `!bug` can file under
- *   POST /api/public/bugs   { openid_token, project, text, version?, platform? } → { id, project, delivered }
+ *   GET  /api/public/bugs   { projects, serverName } — what `!bug` can file under, and whose this is
+ *   POST /api/public/bugs   { openid_token, project, text, version?, platform?, space_id? } → { id, project, delivered }
+ *
+ * Someone from another server must give `space_id`, a Space served here that they're in: that's
+ * the only reason this server's admins would want their report, and it keeps the federation at
+ * large from filing here. Open to any page (corsPolicy.ts), since their app is at another address.
  */
 export function bugReportsRouter(deps: BugReportDeps, limits = { account: accountLimiter, address: addressLimiter }): Router {
   const router = Router();
 
-  router.get('/', (_req, res) => {
-    res.set('Cache-Control', 'no-store').json({ projects: deps.projects });
+  router.get('/', async (_req, res) => {
+    const serverName = await deps.serverName().catch(() => undefined);
+    res.set('Cache-Control', 'no-store').json({ projects: deps.projects, ...(serverName && { serverName }) });
   });
 
   router.post('/', async (req: Request, res: Response) => {
@@ -471,7 +487,12 @@ export function bugReportsRouter(deps: BugReportDeps, limits = { account: accoun
     } catch {
       return void res.status(401).json({ error: 'Authentication failed' });
     }
-    if (!(await deps.isLocal(reporter))) return void res.status(403).json({ error: 'Only accounts on this server can send bug reports here', code: 'not_local' });
+    const spaceId = typeof body.space_id === 'string' && ROOM_ID.test(body.space_id) ? body.space_id : undefined;
+    const space = spaceId ? await deps.spaceOf(reporter, spaceId).catch(() => undefined) : undefined;
+    const local = await deps.isLocal(reporter);
+    if (!local && !space) {
+      return void res.status(403).json({ error: 'Only accounts on this server, or members of its Spaces, can send bug reports here', code: 'not_local' });
+    }
     const checked = checkBugReport(body, deps.projects);
     if (!checked.ok) return void res.status(400).json({ error: checked.error, code: checked.code, projects: deps.projects });
     if (!limits.account.take(reporter)) return void res.status(429).json({ error: 'Too many bug reports; try again in a few minutes', code: 'rate_limited' });
@@ -481,6 +502,8 @@ export function bugReportsRouter(deps: BugReportDeps, limits = { account: accoun
       at: (deps.now?.() ?? new Date()).toISOString(),
       reporter,
       ...checked.report,
+      space: space ? spaceId : undefined,
+      spaceName: space?.name ? cleanText(space.name.replace(/\s+/g, ' '), 100) || undefined : undefined,
     };
     try {
       await deps.log.append(report);

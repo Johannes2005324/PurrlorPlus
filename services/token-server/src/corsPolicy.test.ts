@@ -16,11 +16,13 @@ describe('originAllowed', () => {
     assert.equal(originAllowed('https://anything.example', parseAllowedOrigins(undefined)), true);
   });
 
-  it('opens voice, and only voice', () => {
+  it('opens voice and bug reports, and nothing else', () => {
     assert.equal(openToAnyOrigin('/api/livekit/token'), true);
     assert.equal(openToAnyOrigin('/api/livekit/rooms/participants'), true);
+    assert.equal(openToAnyOrigin('/api/public/bugs'), true);
     assert.equal(openToAnyOrigin('/api/livekitx'), false);
     assert.equal(openToAnyOrigin('/api/public/feed'), false);
+    assert.equal(openToAnyOrigin('/api/public/bugsx'), false);
   });
 });
 

@@ -8,6 +8,7 @@ import { KeywordNotificationSettings } from './KeywordNotificationSettings';
 import { PostNotificationSettings } from './PostNotificationSettings';
 import { useMatrixClient } from '../matrix/MatrixClientContext';
 import {
+  loadOwnPresence,
   removeAccountBanner,
   updateAccountAvatar,
   updateAccountBanner,
@@ -52,7 +53,12 @@ export function AccountGeneralSettings({ onClose }: { onClose: () => void }) {
   const profile = useOwnProfile();
   const ownPresence = useOwnPresence();
   const { profile: extendedProfile, loading: extendedProfileLoading } = useExtendedProfile(profile.userId);
+  // The profile and presence arrive after the form opens (useOwnProfile starts on the fallback
+  // handle; after a while away the client may have no presence for you yet). Each field fills in
+  // once they do, unless already edited, and only an edited field is saved: the form used to
+  // start on the handle and an empty status and write them back, resetting both.
   const [name, setName] = useState(profile.displayName);
+  const [nameTouched, setNameTouched] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File>();
   const [bannerFile, setBannerFile] = useState<File>();
   const [removeBanner, setRemoveBanner] = useState(false);
@@ -63,11 +69,24 @@ export function AccountGeneralSettings({ onClose }: { onClose: () => void }) {
   const [nameColor, setNameColor] = useState('');
   const [nameColorTouched, setNameColorTouched] = useState(false);
   const [presence, setPresence] = useState<UserPresence>(() => (ownPresence.presence as UserPresence) || 'online');
+  const [presenceTouched, setPresenceTouched] = useState(false);
   const [statusMsg, setStatusMsg] = useState(() => ownPresence.statusMsg ?? '');
+  const [statusTouched, setStatusTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>();
   const [notificationStatus, setNotificationStatus] = useState<NotificationSupport>(getNotificationPermission);
   const bannerPreviewUrl = useMediaUrl(bannerFile ? null : extendedProfile.bannerUrl, { width: 600, height: 180, method: 'crop' });
+
+  useEffect(() => {
+    if (!nameTouched) setName(profile.displayName);
+  }, [profile.displayName, nameTouched]);
+  useEffect(() => {
+    void loadOwnPresence(mx);
+  }, [mx]);
+  useEffect(() => {
+    if (!presenceTouched && ownPresence.presence) setPresence(ownPresence.presence as UserPresence);
+    if (!statusTouched) setStatusMsg(ownPresence.statusMsg ?? '');
+  }, [ownPresence.presence, ownPresence.statusMsg, presenceTouched, statusTouched]);
 
   // The fetch is async (see useExtendedProfile.ts) — prefill the bio textarea once it resolves,
   // but only if the user hasn't already started typing, so a slow fetch can't stomp on a draft.
@@ -103,7 +122,7 @@ export function AccountGeneralSettings({ onClose }: { onClose: () => void }) {
       if (bannerFile) tasks.push(updateAccountBanner(mx, bannerFile));
       else if (removeBanner) tasks.push(removeAccountBanner(mx));
       const trimmedName = name.trim();
-      if (trimmedName && trimmedName !== profile.displayName) tasks.push(updateDisplayName(mx, trimmedName));
+      if (nameTouched && trimmedName && trimmedName !== profile.displayName) tasks.push(updateDisplayName(mx, trimmedName));
       const trimmedBio = bio.trim();
       if (bioTouched && trimmedBio !== (extendedProfile.bio ?? '')) {
         tasks.push(updateExtendedProfile(mx, { bio: trimmedBio || null }));
@@ -122,8 +141,10 @@ export function AccountGeneralSettings({ onClose }: { onClose: () => void }) {
         );
       }
       const trimmedStatus = statusMsg.trim();
-      if (presence !== ownPresence.presence || trimmedStatus !== (ownPresence.statusMsg ?? '')) {
-        tasks.push(updateOwnPresence(mx, presence, trimmedStatus));
+      const presenceChanged = presenceTouched && presence !== ownPresence.presence;
+      const statusChanged = statusTouched && trimmedStatus !== (ownPresence.statusMsg ?? '');
+      if (presenceChanged || statusChanged) {
+        tasks.push(updateOwnPresence(mx, presence, statusChanged ? trimmedStatus : undefined));
       }
       await Promise.all(tasks);
       onClose();
@@ -182,7 +203,15 @@ export function AccountGeneralSettings({ onClose }: { onClose: () => void }) {
       </div>
       <label className="nu-field">
         Display name
-        <input className="nu-field__input" value={name} onChange={(e) => setName(e.target.value)} required />
+        <input
+          className="nu-field__input"
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            setNameTouched(true);
+          }}
+          required
+        />
       </label>
       <label className="nu-field">
         Matrix ID
@@ -285,7 +314,10 @@ export function AccountGeneralSettings({ onClose }: { onClose: () => void }) {
           className="nu-field__input"
           data-nu-role="account-settings-presence"
           value={presence}
-          onChange={(e) => setPresence(e.target.value as UserPresence)}
+          onChange={(e) => {
+            setPresence(e.target.value as UserPresence);
+            setPresenceTouched(true);
+          }}
         >
           {PRESENCE_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -300,7 +332,10 @@ export function AccountGeneralSettings({ onClose }: { onClose: () => void }) {
           className="nu-field__input"
           data-nu-role="account-settings-status-msg"
           value={statusMsg}
-          onChange={(e) => setStatusMsg(e.target.value)}
+          onChange={(e) => {
+            setStatusMsg(e.target.value);
+            setStatusTouched(true);
+          }}
           placeholder="What's on your mind?"
           maxLength={256}
         />

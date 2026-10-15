@@ -158,9 +158,11 @@ See [webhooks.md](webhooks.md).
 
 ### `GET`/`POST /api/public/bugs`
 
-Bug reports sent with `!bug <project> <text>`. `GET` lists the projects (`BUG_PROJECTS`); `POST`
-takes `{ openid_token, project, text, platform?, version? }` from an account on this server, keeps it
-and has the service bot post it to the admins' room. See [bug-reports.md](bug-reports.md).
+Bug reports sent with `!bug <project> <text>`. `GET` lists the projects (`BUG_PROJECTS`) and this
+server's name; `POST` takes `{ openid_token, project, text, platform?, version?, space_id? }` from an
+account on this server, or from another server's account in a Space served here (`space_id`), keeps
+it and has the service bot post it to the admins' room. Open to any page, like voice. See
+[bug-reports.md](bug-reports.md).
 
 ### `GET /api/public/…`
 

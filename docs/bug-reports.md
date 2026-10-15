@@ -1,6 +1,7 @@
 # Bug reports
 
-Anyone signed in on this server can send the admins a bug report from any channel or DM:
+Anyone signed in on this server can send the admins a bug report from any channel or DM, and so can
+someone from another server who's in one of this server's Spaces (see "From another server" below):
 
 ```
 !bug <project> <what's wrong>
@@ -51,6 +52,27 @@ the report's ID (the first column of `purrlor bugs`), for any report, and edit i
 "✅ Resolved by <your login>". An optional `--reason "fixed in 1a2b3c"` is shown on the notice and
 in the list, and both go in the audit log (`bugs.resolve`, `bugs.reopen`).
 
+## From another server
+
+A report goes to the server that hosts the Space it was typed in, not to the reporter's own server:
+someone from `cats.example` in one of your Spaces who types `!bug` reaches your admins. In a DM, or a
+room in no Space, it goes to the reporter's own server as before. The notice says where it came from:
+
+```
+🐞 Bug report [purrlor] from @mochi:cats.example (browser, version 1a2b3c4) in Cozy Corner
+the voice channel drops after a minute
+```
+
+Their app finds your token server from your instance's address on its peer list, then the Space's
+voice token server, then your server name itself (`https://purr.example`), and sends the report only
+to an address whose `GET /api/public/bugs` names your server. Your token server takes it only if the
+Space is one it serves (made on this server, with the service bot in it, the same Spaces voice
+works in: `docs/voice-architecture.md`) and the reporter has joined it. If none of that works out,
+they're told the Space's server doesn't take bug reports, and nothing is sent anywhere else.
+
+`BUG_PROJECTS` is your list, so they file under your projects. Their own server needs the version
+of the app that does this; an older one still sends to its own server.
+
 ## Reading them on the server
 
 Every report is also kept, whether or not the room could be reached:
@@ -85,11 +107,12 @@ room anyway. So the app catches `!bug` as it's sent (`apps/web/src/matrix/bugRep
 it to the token server with a Matrix OpenID token, the same proof of who's sending as the online
 count uses. The token server (`services/token-server/src/bugReports.ts`) checks it, keeps it, and has
 the bot post it. That means `!bug` works only from Purrlor, not from other Matrix apps, and only for
-accounts on this server. The bot does read the Bug reports room, which it made for the admins,
+accounts on this server or members of its Spaces. The bot does read the Bug reports room, which it made for the admins,
 to see the ✅s and replies; no other room's messages.
 
-`POST /api/public/bugs` takes `{ openid_token, project, text, platform?, version? }` and answers
+`POST /api/public/bugs` takes `{ openid_token, project, text, platform?, version?, space_id? }` and answers
 `{ id, project, delivered }`. `delivered` is false when the report was kept but the room couldn't
 be told, for example because `BUG_REPORT_ADMINS` is empty. It refuses with `400` (bad project or
-text, with `projects`), `401` (login didn't check out), `403` (an account on another server) or
-`429`. `GET /api/public/bugs` lists the projects.
+text, with `projects`), `401` (login didn't check out), `403` (an account on another server, without a Space
+served here that it's in) or `429`. `GET /api/public/bugs` lists the projects and gives this server's
+name (`serverName`). Both are open to any page (CORS), since a visitor's app is at another address.

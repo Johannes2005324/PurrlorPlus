@@ -26,31 +26,43 @@ export async function updateDisplayName(mx: MatrixClient, name: string): Promise
 export type UserPresence = 'online' | 'unavailable' | 'offline';
 
 /**
- * Sets the signed-in user's own presence and/or custom status message (MSC-less, plain
- * `/presence/{userId}/status` — every homeserver that federates presence at all supports this).
- * `statusMsg` follows Matrix's own semantics: omitting it entirely leaves whatever was set
- * before untouched, while passing `''` explicitly clears it — so callers that want to clear a
- * status must pass `''`, not leave the field out.
+ * Sets the signed-in user's own presence and/or custom status message (plain
+ * `/presence/{userId}/status`). Passing `''` clears the status. Leaving `statusMsg` out keeps the
+ * one set before: the server is asked for it and it's sent again, since a homeserver may treat a
+ * missing `status_msg` as clearing it, and an Away set from the status menu or by AutoAway wiped
+ * the status someone had written.
  */
 export async function updateOwnPresence(mx: MatrixClient, presence: UserPresence, statusMsg?: string): Promise<void> {
-  await mx.setPresence({ presence, ...(statusMsg !== undefined && { status_msg: statusMsg }) });
-
-  // setPresence() only performs the write — matrix-js-sdk never updates the local `User` cache
-  // from its own response, and a homeserver won't reliably echo your own presence change back to
-  // you over /sync promptly (if at all), so without this the rest of the UI (UserPanel, the
-  // Appearance-adjacent status picker) would keep showing the stale presence until some unrelated
-  // sync happened to carry it. Read back what the server actually stored and feed it into the
-  // local model the same way a real incoming m.presence event would, so it updates immediately.
   const userId = mx.getUserId();
-  if (!userId) return;
-  const stored = await mx.getPresence(userId);
+  let keep = statusMsg;
+  if (keep === undefined && userId) {
+    keep = (await mx.getPresence(userId).catch(() => undefined))?.status_msg ?? mx.getUser(userId)?.presenceStatusMsg;
+  }
+  await mx.setPresence({ presence, ...(keep !== undefined && { status_msg: keep }) });
+  await loadOwnPresence(mx);
+}
+
+/**
+ * Reads the signed-in user's presence and status from the server into the local `User`, the way
+ * an incoming m.presence event would. setPresence() never updates it from its own response, a
+ * homeserver won't reliably echo your own presence back over /sync, and after a while away the
+ * first sync may carry none at all, which left the status picker and Account Settings showing
+ * no status (and saving that). Resolves to what the server has, or undefined if it couldn't say.
+ */
+export async function loadOwnPresence(mx: MatrixClient): Promise<{ presence: string; statusMsg?: string } | undefined> {
+  const userId = mx.getUserId();
+  if (!userId) return undefined;
+  const stored = await mx.getPresence(userId).catch(() => undefined);
+  if (!stored) return undefined;
   const user = mx.getUser(userId);
-  if (!user) return;
-  // Deliberately not User.setPresenceEvent(): it only fires UserEvent.Presence when the
-  // presence *enum* itself changed, so a status-message-only edit (enum unchanged) would patch
-  // presenceStatusMsg locally but never notify useOwnPresence's listener, leaving the UI stale.
-  // Setting the fields directly and always emitting covers both cases.
-  user.presence = stored.presence;
-  user.presenceStatusMsg = stored.status_msg;
-  user.emit(UserEvent.Presence, new MatrixEvent({ type: 'm.presence', sender: userId, content: stored }), user);
+  if (user) {
+    // Deliberately not User.setPresenceEvent(): it only fires UserEvent.Presence when the
+    // presence *enum* itself changed, so a status-message-only edit (enum unchanged) would patch
+    // presenceStatusMsg locally but never notify useOwnPresence's listener, leaving the UI stale.
+    // Setting the fields directly and always emitting covers both cases.
+    user.presence = stored.presence;
+    user.presenceStatusMsg = stored.status_msg;
+    user.emit(UserEvent.Presence, new MatrixEvent({ type: 'm.presence', sender: userId, content: stored }), user);
+  }
+  return { presence: stored.presence, statusMsg: stored.status_msg };
 }

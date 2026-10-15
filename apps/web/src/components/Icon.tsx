@@ -92,6 +92,7 @@ const PATHS: Record<string, ReactNode> = {
   arrowDown: <path d="M12 5v14M19 12l-7 7-7-7" />,
   arrowUp: <path d="M12 19V5M5 12l7-7 7 7" />,
   arrowLeft: <path d="M19 12H5M12 19l-7-7 7-7" />,
+  download: <path d="M12 3v12M7 10l5 5 5-5M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />,
   reply: <path d="m9 17-5-5 5-5M20 18v-2a4 4 0 0 0-4-4H4" />,
   forward: <path d="m15 17 5-5-5-5M4 18v-2a4 4 0 0 1 4-4h12" />,
   bookmark: <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />,
