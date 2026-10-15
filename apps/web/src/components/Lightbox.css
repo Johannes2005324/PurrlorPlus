@@ -19,7 +19,7 @@
 .nu-lightbox__close {
   /* Deliberately not theme tokens: this floats over an arbitrary photo, not app chrome — a
      translucent-white control reads on any image, which a theme's own palette wouldn't
-     necessarily guarantee. Same reasoning as VoiceChannelPanel's screen-share popout button. */
+     necessarily guarantee. Same reasoning as VoiceChannelPanel's camera tile name labels. */
   position: absolute;
   top: var(--nu-space-4);
   right: var(--nu-space-4);

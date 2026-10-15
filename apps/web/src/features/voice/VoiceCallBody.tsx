@@ -251,48 +251,57 @@ export default function VoiceCallBody({ room, onLeave }: { room: MatrixRoom; onL
   return (
     <>
       {activeScreenShare ? (
-        <div className="nu-voice-panel__screen-share" data-nu-role="voice-screen-share">
-          {screenSharePopout.isOpen ? (
-            <p className="nu-voice-panel__screen-share-popped-out">
-              Popped out into its own window.
-            </p>
-          ) : activeScreenShare.publication.track ? (
-            <VideoTrack trackRef={activeScreenShare} />
-          ) : (
-            // Just switched to: its stream is on its way (ScreenShareProvider subscribes to it).
-            <p className="nu-voice-panel__screen-share-popped-out">Loading the share…</p>
-          )}
-          {screenShares.length > 1 && (
-            // More than one person sharing: pick whose to watch. Yours is in the list too.
-            <div className="nu-voice-panel__share-tabs" role="tablist" aria-label="Screen shares" data-nu-role="voice-screen-share-tabs">
-              {screenShares.map((share) => (
-                <button
-                  key={share.participant.identity}
-                  type="button"
-                  role="tab"
-                  aria-selected={share === activeScreenShare}
-                  className={
-                    share === activeScreenShare
-                      ? 'nu-voice-panel__share-tab nu-voice-panel__share-tab--active'
-                      : 'nu-voice-panel__share-tab'
-                  }
-                  data-nu-role="voice-screen-share-tab"
-                  onClick={() => selectScreenShare(share.participant.identity)}
-                >
-                  {share.participant.isLocal ? 'Your screen' : participantDisplayName(room, share.participant)}
-                </button>
-              ))}
-            </div>
-          )}
-          <button
-            type="button"
-            className="nu-voice-panel__screen-share-popout"
-            data-nu-role="voice-screen-share-popout"
-            title={screenSharePopout.isOpen ? 'Bring back' : 'Pop out'}
-            onClick={screenSharePopout.toggle}
-          >
-            {screenSharePopout.isOpen ? '⇱' : '⇲'}
-          </button>
+        // Laid out as Watch Together's player is (WatchTogetherPlayer.css): a 16:9 frame, with whose
+        // share it is and the pop-out button in a row under it rather than over the picture.
+        <div className="nu-watch-together nu-voice-panel__screen-share" data-nu-role="voice-screen-share">
+          <div className="nu-watch-together__frame">
+            {screenSharePopout.isOpen ? (
+              <p className="nu-voice-panel__screen-share-popped-out">Popped out into its own window.</p>
+            ) : activeScreenShare.publication.track ? (
+              <VideoTrack trackRef={activeScreenShare} />
+            ) : (
+              // Just switched to: its stream is on its way (ScreenShareProvider subscribes to it).
+              <p className="nu-voice-panel__screen-share-popped-out">Loading the share…</p>
+            )}
+          </div>
+          <div className="nu-watch-together__controls">
+            {screenShares.length > 1 ? (
+              // More than one person sharing: pick whose to watch. Yours is in the list too.
+              <div className="nu-voice-panel__share-tabs" role="tablist" aria-label="Screen shares" data-nu-role="voice-screen-share-tabs">
+                {screenShares.map((share) => (
+                  <button
+                    key={share.participant.identity}
+                    type="button"
+                    role="tab"
+                    aria-selected={share === activeScreenShare}
+                    className={
+                      share === activeScreenShare
+                        ? 'nu-voice-panel__share-tab nu-voice-panel__share-tab--active'
+                        : 'nu-voice-panel__share-tab'
+                    }
+                    data-nu-role="voice-screen-share-tab"
+                    onClick={() => selectScreenShare(share.participant.identity)}
+                  >
+                    {share.participant.isLocal ? 'Your screen' : participantDisplayName(room, share.participant)}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="nu-voice-panel__share-name" data-nu-role="voice-screen-share-name">
+                {activeScreenShare.participant.isLocal ? 'Your screen' : `${participantDisplayName(room, activeScreenShare.participant)}’s screen`}
+              </span>
+            )}
+            <button
+              type="button"
+              className="nu-watch-together__play-pause nu-voice-panel__screen-share-popout"
+              data-nu-role="voice-screen-share-popout"
+              title={screenSharePopout.isOpen ? 'Bring back' : 'Pop out'}
+              aria-label={screenSharePopout.isOpen ? 'Bring back' : 'Pop out'}
+              onClick={screenSharePopout.toggle}
+            >
+              {screenSharePopout.isOpen ? '⇱' : '⇲'}
+            </button>
+          </div>
         </div>
       ) : (
         // Watch Together only ever shows up here when nobody's actually sharing their screen —

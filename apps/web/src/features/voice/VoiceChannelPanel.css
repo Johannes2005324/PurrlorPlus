@@ -33,47 +33,38 @@
   gap: var(--nu-space-2);
 }
 
-.nu-voice-panel__screen-share {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--nu-color-bg-app);
-  border-radius: var(--nu-radius-md);
-  overflow: hidden;
-}
-
+/* The screen share is laid out as Watch Together's player is (.nu-watch-together in
+   WatchTogetherPlayer.css): a 16:9 frame, controls in a row under it. These are only what differs. */
 .nu-voice-panel__screen-share video {
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .nu-voice-panel__screen-share-popped-out {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--nu-color-text-muted);
   font-size: var(--nu-font-size-sm);
 }
 
-.nu-voice-panel__screen-share-popout {
-  /* Deliberately not theme tokens — floats over an arbitrary screen share, not app chrome. See
-     Lightbox.css's close button for the same reasoning. */
-  position: absolute;
-  top: var(--nu-space-2);
-  right: var(--nu-space-2);
-  appearance: none;
-  border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--nu-radius-sm);
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
-  font-size: 16px;
-  cursor: pointer;
+.nu-voice-panel__share-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--nu-color-text-secondary);
+  font-size: var(--nu-font-size-sm);
 }
 
-.nu-voice-panel__screen-share-popout:hover {
-  background: rgba(0, 0, 0, 0.7);
+/* The pop-out button sits at the end of the row, where Watch Together has its stop button. */
+.nu-voice-panel__screen-share-popout {
+  margin-left: auto;
 }
 
 .nu-voice-participants {
@@ -125,7 +116,7 @@
 
 .nu-voice-participant__video-name {
   /* Deliberately not theme tokens — floats over an arbitrary camera feed, not app chrome. Same
-     reasoning as Lightbox.css's close button and the screen-share popout button. */
+     reasoning as Lightbox.css's close button. */
   position: absolute;
   left: var(--nu-space-2);
   bottom: var(--nu-space-2);
@@ -387,14 +378,11 @@
 
 /* Whose screen to watch, when more than one person is sharing: over the top-left of the share. */
 .nu-voice-panel__share-tabs {
-  position: absolute;
-  top: var(--nu-space-2);
-  left: var(--nu-space-2);
-  right: 48px;
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   gap: var(--nu-space-1);
-  z-index: 1;
 }
 
 .nu-voice-panel__share-tab {
@@ -405,7 +393,7 @@
   padding: var(--nu-space-1) var(--nu-space-3);
   border: 1px solid var(--nu-color-border);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--nu-color-bg-app) 80%, transparent);
+  background: var(--nu-color-bg-secondary);
   color: var(--nu-color-text-secondary);
   font-size: var(--nu-font-size-sm);
   cursor: pointer;
