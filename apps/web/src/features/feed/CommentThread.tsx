@@ -3,6 +3,7 @@ import type { RoomMember } from 'matrix-js-sdk';
 import { Avatar } from '../../components/Avatar';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { Icon } from '../../components/Icon';
+import { useAutoGrow } from '../../components/useAutoGrow';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import { useHiddenLibraryImages, useWithLibraryEmotes } from '../../matrix/hooks/useEmoteLibrary';
 import { useUserProfile } from '../../matrix/hooks/useUserProfile';
@@ -231,6 +232,7 @@ export function CommentThread({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState('');
+  useAutoGrow(inputRef, text);
   // Just the target: its author's name is looked up live where it's shown, so a reply started
   // before their profile had loaded doesn't stay stuck showing a raw user ID.
   const [replyingTo, setReplyingTo] = useState<ReplyTarget>();

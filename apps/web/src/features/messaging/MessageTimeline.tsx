@@ -1,6 +1,7 @@
 import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Direction, M_POLL_START, type MatrixClient, type MatrixEvent, type Room, type RoomMember } from 'matrix-js-sdk';
 import { useAtom, useSetAtom } from 'jotai';
+import { useAutoGrow } from '../../components/useAutoGrow';
 import { Avatar, nameHue } from '../../components/Avatar';
 import { Icon } from '../../components/Icon';
 import { ReportDialog } from '../feed/ReportDialog';
@@ -357,6 +358,8 @@ const MessageRow = memo(function MessageRow({
       : undefined;
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const editInputRef = useRef<HTMLTextAreaElement>(null);
+  useAutoGrow(editInputRef, draft);
 
   const toggleReaction = (group: ReactionGroup) => {
     if (group.hasOwnReaction) {
@@ -506,6 +509,7 @@ const MessageRow = memo(function MessageRow({
         {isEditing ? (
           <div className="nu-timeline__edit-form" data-nu-role="timeline-edit-form">
             <textarea
+              ref={editInputRef}
               className="nu-timeline__edit-input"
               data-nu-role="timeline-edit-input"
               value={draft}
