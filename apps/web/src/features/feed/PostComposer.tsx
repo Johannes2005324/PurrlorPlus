@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useAtomValue, useStore } from 'jotai';
 import { composerFocusAtom, sharedPostFilesAtom, sharedPostTextAtom } from '../../app/state/feed';
 import { Icon } from '../../components/Icon';
+import { useAutoGrow } from '../../components/useAutoGrow';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import type { Emote } from '../../matrix/emotes';
 import { buildPostContent, savePrivatePost } from '../../matrix/feed';
@@ -86,6 +87,7 @@ export function PostComposer({
   // joins them), so the mention reaches them. In a Global post: anyone this client knows of; they
   // aren't in your profile room, so publishing invites them to it (matrix/mentionInvites.ts).
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useAutoGrow(textareaRef, text);
   const isGlobal = target?.target.kind === 'global';
   const spaceMembers = useRoomMembers(target?.target.kind === 'space' ? target.target.space.roomId : null);
   const people = useMemo(() => {

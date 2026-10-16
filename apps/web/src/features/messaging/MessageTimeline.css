@@ -285,7 +285,10 @@ button.nu-timeline__reply-preview:focus-visible {
 }
 
 .nu-timeline__edit-input {
+  /* Grows with what's typed (useAutoGrow) up to here, then scrolls. */
   resize: none;
+  max-height: min(50vh, 400px);
+  overflow-y: auto;
   background: var(--nu-color-bg-tertiary);
   border: 1px solid var(--nu-color-accent);
   border-radius: var(--nu-radius-md);

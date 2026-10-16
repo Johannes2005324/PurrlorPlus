@@ -12,6 +12,7 @@ import {
 import { MsgType } from 'matrix-js-sdk';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { Icon } from '../../components/Icon';
+import { useAutoGrow } from '../../components/useAutoGrow';
 import { Menu, MenuItem } from '../../components/Menu';
 import { channelComposerFocusAtom, selectedRoomIdAtom } from '../../app/state/selection';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
@@ -88,6 +89,7 @@ export function Composer({
   const dragDepthRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useAutoGrow(textareaRef, text);
   // Link embeds (docs/embeds.md): not in an encrypted chat unless you've allowed them (Settings →
   // Privacy), and not for commands.
   const embedSettings = useEmbedSettings();

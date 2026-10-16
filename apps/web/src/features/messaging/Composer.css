@@ -277,7 +277,9 @@
   font-family: inherit;
   font-size: var(--nu-font-size-message);
   line-height: 1.4;
-  max-height: 160px;
+  /* Grows with what's typed (useAutoGrow) up to here, then scrolls. */
+  max-height: min(40vh, 320px);
+  overflow-y: auto;
 }
 
 .nu-composer__input::placeholder {

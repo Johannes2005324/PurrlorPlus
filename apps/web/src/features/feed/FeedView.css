@@ -315,6 +315,13 @@
   gap: var(--nu-space-2);
 }
 
+/* A post being edited grows with its text (useAutoGrow) up to here, then scrolls. */
+.nu-post__edit-input {
+  resize: none;
+  max-height: min(60vh, 480px);
+  overflow-y: auto;
+}
+
 /* A content warning, standing in for the text and media it covers until "Show more". */
 .nu-post__warning {
   display: flex;

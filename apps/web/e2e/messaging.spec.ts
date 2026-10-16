@@ -123,3 +123,37 @@ test('a mention that arrives while Notifications sits hidden behind another page
   await page.waitForTimeout(1500);
   await expect(role(bell, 'unread-badge-highlight')).toHaveText('1');
 });
+
+test('the message box and the post box grow as you type, up to a limit, and shrink once sent', async ({ page }) => {
+  const [alice, bob] = await Promise.all([createUser('alice'), createUser('bob')]);
+  const { spaceName } = await createSpaceWithChannel(alice, [bob]);
+  await logIn(page, alice);
+  await openChannel(page, spaceName, 'general');
+
+  const height = async (name: string) => (await role(page, name).boundingBox())!.height;
+  const lines = (n: number) => Array.from({ length: n }, (_, i) => `line ${i + 1}`).join('\n');
+
+  // A channel's message box: one line to start, taller for four, capped (then it scrolls).
+  const input = role(page, 'composer-input');
+  const empty = await height('composer-input');
+  await input.fill(lines(4));
+  const four = await height('composer-input');
+  expect(four).toBeGreaterThan(empty * 2.5);
+  await input.fill(lines(60));
+  const capped = await height('composer-input');
+  expect(capped).toBeLessThanOrEqual(320.5);
+  expect(await input.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  // Sent, it's one line again.
+  await input.fill(lines(4));
+  await input.press('Enter');
+  await expect(message(page, 'line 4')).toBeVisible();
+  await expect.poll(() => height('composer-input')).toBeLessThan(empty + 1);
+
+  // The feed's post box: grows the same way.
+  await role(page, 'server-rail-global-feed').click();
+  const post = role(page, 'feed-composer-input');
+  const postEmpty = await height('feed-composer-input');
+  await post.fill(lines(12));
+  expect(await height('feed-composer-input')).toBeGreaterThan(postEmpty * 2);
+  expect(await post.evaluate((el) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+});

@@ -1,9 +1,10 @@
-import { useEffect, useState, type ComponentProps, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ComponentProps, type FormEvent, type ReactNode } from 'react';
 import { useSetAtom } from 'jotai';
 import { MatrixEvent } from 'matrix-js-sdk';
 import { openPostAtom } from '../../app/state/selection';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { Icon } from '../../components/Icon';
+import { useAutoGrow } from '../../components/useAutoGrow';
 import { Menu, MenuItem } from '../../components/Menu';
 import { shareLink } from '../../components/ShareLinkButton';
 import { postLink } from '../../matrix/publicWeb';
@@ -172,6 +173,8 @@ export function InteractivePost({
   // a post's own page holds a snapshot, and a feed you haven't joined doesn't update live.
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const editInputRef = useRef<HTMLTextAreaElement>(null);
+  useAutoGrow(editInputRef, draft);
   const [savingEdit, setSavingEdit] = useState(false);
   const [saved, setSaved] = useState<PostContent>();
   const editEmotes = useWithLibraryEmotes(card.emotes ?? []);
@@ -210,7 +213,8 @@ export function InteractivePost({
   const editForm = editing ? (
     <form className="nu-post__edit" data-nu-role="post-edit-form" onSubmit={handleSaveEdit}>
       <textarea
-        className="nu-field__textarea"
+        ref={editInputRef}
+        className="nu-field__textarea nu-post__edit-input"
         data-nu-role="post-edit-input"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}

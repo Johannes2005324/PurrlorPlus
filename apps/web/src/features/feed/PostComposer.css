@@ -14,8 +14,11 @@
 }
 
 .nu-post-composer__input {
-  resize: vertical;
+  /* Grows with what's typed (useAutoGrow) up to here, then scrolls. */
+  resize: none;
   min-height: 64px;
+  max-height: min(60vh, 480px);
+  overflow-y: auto;
   border: none;
   outline: none;
   background: transparent;
