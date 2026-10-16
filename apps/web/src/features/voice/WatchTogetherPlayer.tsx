@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { currentPositionSeconds, type WatchTogetherState } from './watchTogether';
 import type { WatchTogetherControls } from './useWatchTogether';
 import { useVoiceCall } from './voiceCallContext';
+import { readWatchVolume, saveWatchVolume } from './listenVolume';
 import './WatchTogetherPlayer.css';
 
 // The YouTube IFrame Player API has no official TypeScript types shipped with the package this
@@ -303,16 +304,54 @@ export function MediaPlayer({
  * The play/pause, time, seek and stop controls shared by both ways of sharing. Every change goes
  * through `controls`, which broadcasts it — so one person's pause pauses it for the whole call.
  */
+/**
+ * "Volume for me": how loud something everyone in the call shares plays on your own speakers.
+ * Nobody else's changes. Shown in a shared player's row of controls, before its last button.
+ */
+export function VolumeSlider({
+  value,
+  onChange,
+  deafened,
+  role,
+  label,
+}: {
+  value: number;
+  onChange: (volume: number) => void;
+  deafened: boolean;
+  role: string;
+  label: string;
+}) {
+  return (
+    <label className="nu-watch-together__volume" title={deafened ? 'Deafened: you hear nothing in the call' : `${label} (only for you)`}>
+      <span aria-hidden="true">{deafened || value === 0 ? '🔇' : value < 0.5 ? '🔉' : '🔊'}</span>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.05}
+        value={value}
+        disabled={deafened}
+        data-nu-role={role}
+        aria-label={`${label} (only for you)`}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+    </label>
+  );
+}
+
 export function SharedMediaControls({
   state,
   controls,
   getInfo,
   stopLabel,
+  volume,
 }: {
   state: WatchTogetherState;
   controls: WatchTogetherControls;
   getInfo: () => PlaybackInfo;
   stopLabel: string;
+  /** A "volume for me" slider before the stop button (Watch Together's; the music card has its own). */
+  volume?: ReactNode;
 }) {
   const [info, setInfo] = useState<PlaybackInfo>({ position: 0, duration: 0 });
   const [scrubbing, setScrubbing] = useState<number | null>(null);
@@ -362,6 +401,7 @@ export function SharedMediaControls({
         onTouchEnd={commitSeek}
         onKeyUp={commitSeek}
       />
+      {volume}
       <button
         type="button"
         className="nu-watch-together__stop"
@@ -386,7 +426,8 @@ export function WatchTogetherPlayer({
 }) {
   const getInfoRef = useRef<() => PlaybackInfo>(() => ({ position: 0, duration: 0 }));
   const deafened = useVoiceCall()?.deafened ?? false;
-  const audio = { volume: 1, muted: deafened };
+  const [volume, setVolume] = useState(readWatchVolume);
+  const audio = { volume, muted: deafened };
   const register = (fn: () => PlaybackInfo) => (getInfoRef.current = fn);
 
   return (
@@ -401,6 +442,18 @@ export function WatchTogetherPlayer({
         controls={controls}
         getInfo={() => getInfoRef.current()}
         stopLabel="Stop watching together"
+        volume={
+          <VolumeSlider
+            value={volume}
+            deafened={deafened}
+            role="watch-together-volume"
+            label="Volume for the video"
+            onChange={(next) => {
+              setVolume(next);
+              saveWatchVolume(next);
+            }}
+          />
+        }
       />
     </div>
   );

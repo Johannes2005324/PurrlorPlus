@@ -106,3 +106,18 @@
   flex-wrap: wrap;
   gap: var(--nu-space-4);
 }
+
+/* "Volume for me" (VolumeSlider): Watch Together's and a screen share's, in their row of controls. */
+.nu-watch-together__volume {
+  flex: 0 1 120px;
+  min-width: 72px;
+  display: flex;
+  align-items: center;
+  gap: var(--nu-space-1);
+  font-size: var(--nu-font-size-sm);
+}
+
+.nu-watch-together__volume input {
+  flex: 1;
+  min-width: 0;
+}
