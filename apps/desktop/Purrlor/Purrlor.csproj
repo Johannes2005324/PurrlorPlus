@@ -12,7 +12,7 @@
     <RootNamespace>Purrlor</RootNamespace>
     <Platforms>x64</Platforms>
     <!-- The one version number: Build-Purrlor.ps1 reads it for the installer and the release. -->
-    <Version>1.2.2</Version>
+    <Version>1.2.3</Version>
     <Product>Purrlor</Product>
     <Company>MeowOps</Company>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
