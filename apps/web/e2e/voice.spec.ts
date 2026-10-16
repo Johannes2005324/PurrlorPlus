@@ -1,11 +1,41 @@
+import { writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { logIn, role } from './app';
 import { api, createSpaceWithChannel, createUser, eventually, type TestUser } from './matrix';
 
 /**
- * A real call, through the LiveKit in e2e/docker-compose.yml. Chrome's fake microphone plays a
- * steady tone, so everyone in these calls is always talking.
+ * A real call, through the LiveKit in e2e/docker-compose.yml. Everyone's microphone plays a steady
+ * tone (below), so everyone in these calls is always talking.
  */
+
+/**
+ * The tone: two seconds of 440 Hz as a WAV file, which Chrome loops as its fake microphone.
+ * Chrome's own fake microphone only beeps, with silence between, and on a busy machine LiveKit's
+ * "who's talking" could miss the beeps altogether: the speaking checks below failed now and then.
+ */
+function steadyTone(): string {
+  const rate = 48_000;
+  const samples = rate * 2;
+  const wav = Buffer.alloc(44 + samples * 2);
+  wav.write('RIFF', 0);
+  wav.writeUInt32LE(36 + samples * 2, 4);
+  wav.write('WAVEfmt ', 8);
+  wav.writeUInt32LE(16, 16); // fmt chunk size
+  wav.writeUInt16LE(1, 20); // PCM
+  wav.writeUInt16LE(1, 22); // mono
+  wav.writeUInt32LE(rate, 24);
+  wav.writeUInt32LE(rate * 2, 28); // bytes per second
+  wav.writeUInt16LE(2, 32); // bytes per sample
+  wav.writeUInt16LE(16, 34); // bits per sample
+  wav.write('data', 36);
+  wav.writeUInt32LE(samples * 2, 40);
+  for (let i = 0; i < samples; i++) wav.writeInt16LE(Math.round(Math.sin((2 * Math.PI * 440 * i) / rate) * 0.5 * 32767), 44 + i * 2);
+  const file = join(tmpdir(), 'purrlor-e2e-tone.wav');
+  writeFileSync(file, wav);
+  return file;
+}
 
 const enc = encodeURIComponent;
 const TOKEN_SERVER = process.env.E2E_TOKEN_SERVER ?? 'http://127.0.0.1:6168';
@@ -16,6 +46,7 @@ test.use({
     args: [
       '--use-fake-ui-for-media-stream',
       '--use-fake-device-for-media-stream',
+      `--use-file-for-fake-audio-capture=${steadyTone()}`,
       '--autoplay-policy=no-user-gesture-required',
       // Sharing picks the whole (fake) screen without asking.
       '--auto-select-desktop-capture-source=Entire screen',
@@ -37,7 +68,9 @@ async function spaceWithVoiceChannel(owner: TestUser, members: TestUser[]) {
     await api(owner, 'POST', `/rooms/${enc(roomId)}/invite`, { user_id: botUserId });
     await eventually(
       () => api<{ membership: string }>(owner, 'GET', `/rooms/${enc(roomId)}/state/m.room.member/${enc(botUserId)}`),
-      (m) => m.membership === 'join'
+      (m) => m.membership === 'join',
+      // The bot joins on its next sync; slower with many calls starting at once.
+      45_000
     );
   }
   return created;
