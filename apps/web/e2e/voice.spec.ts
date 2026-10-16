@@ -130,3 +130,34 @@ test('a screen share is laid out as Watch Together is: the same 16:9 frame, whos
   await expect(share).toContainText('Popped out into its own window.');
   expect((await share.locator('.nu-watch-together__frame').boundingBox())!.height).toBeCloseTo(frame.height, 0);
 });
+
+test('Watch Together’s and a screen share’s volume are each person’s own', async ({ browser }) => {
+  test.setTimeout(180_000);
+  const [alice, bob] = await Promise.all([createUser('alice'), createUser('bob')]);
+  const { spaceName } = await spaceWithVoiceChannel(alice, [bob]);
+  const alicePage = await joinCall(browser, alice, spaceName);
+  const bobPage = await joinCall(browser, bob, spaceName);
+
+  await role(bobPage, 'voice-together-menu').click();
+  await role(bobPage, 'voice-watch-together-toggle').click();
+  await role(bobPage, 'watch-together-url-input').fill('https://example.org/clip.mp4');
+  await bobPage.getByRole('button', { name: 'Start watching' }).click();
+  const videoVolume = (page: typeof bobPage) => role(page, 'watch-together').locator('video').evaluate((v: HTMLVideoElement) => v.volume);
+  await expect.poll(() => videoVolume(alicePage)).toBe(1);
+
+  // Bob turns it down for himself: Alice still hears it at full.
+  await role(bobPage, 'watch-together-volume').fill('0.3');
+  await expect.poll(() => videoVolume(bobPage)).toBeCloseTo(0.3);
+  expect(await videoVolume(alicePage)).toBe(1);
+  // Remembered on Bob's device, for the next video too.
+  expect(await bobPage.evaluate(() => localStorage.getItem('nekous_watch_together_volume'))).toBe('0.3');
+
+  // A screen share with sound (Chrome's fake screen has some): Bob, watching, can turn it down for
+  // himself, and it's remembered; Alice, sharing, isn't played her own and has no slider.
+  await role(alicePage, 'voice-screen-share-toggle').click();
+  await expect(role(bobPage, 'voice-screen-share').locator('video')).toBeVisible({ timeout: 30_000 });
+  await role(bobPage, 'voice-screen-share-volume').fill('0.4');
+  expect(await bobPage.evaluate(() => localStorage.getItem('nekous_screen_share_volume'))).toBe('0.4');
+  await expect(role(alicePage, 'voice-screen-share').locator('video')).toBeVisible();
+  await expect(role(alicePage, 'voice-screen-share-volume')).toHaveCount(0);
+});

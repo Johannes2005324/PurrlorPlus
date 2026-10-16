@@ -18,7 +18,8 @@ import { Menu, MenuItem } from '../../components/Menu';
 import { useVoiceCall } from './voiceCallContext';
 import { useParticipantSounds } from './useParticipantSounds';
 import { usePushToTalk } from './usePushToTalk';
-import { personVolume, setPersonVolume } from './callVolume';
+import { personVolume, setPersonVolume, setShareVolume } from './callVolume';
+import { readShareVolume } from './listenVolume';
 import { toggleDeafen, toggleMute } from './callActions';
 import { readIncludeSystemAudio, saveIncludeSystemAudio, setScreenShareJitterBufferTarget, startScreenShare } from './voiceChannelRoomOptions';
 import { useCallScreenShare } from './ScreenShareProvider';
@@ -26,7 +27,7 @@ import { byJoinOrder } from './callPresence';
 import { useSharedWatchTogether } from './watchTogetherContext';
 import { sessionMode, type WatchTogetherMode } from './watchTogether';
 import { WatchTogetherModal } from './WatchTogetherModal';
-import { WatchTogetherPlayer } from './WatchTogetherPlayer';
+import { VolumeSlider, WatchTogetherPlayer } from './WatchTogetherPlayer';
 import { WatchPartyStartBanner } from './WatchPartyStartBanner';
 import '@livekit/components-styles';
 
@@ -197,6 +198,11 @@ export default function VoiceCallBody({ room, onLeave }: { room: MatrixRoom; onL
   // which stays open in other channels.
   const { shares: screenShares, active: activeScreenShare, select: selectScreenShare, popout: screenSharePopout } =
     useCallScreenShare();
+  // Someone else's share with sound gets a "volume for me" slider (yours isn't played back to you).
+  const shareAudio = useTracks([Track.Source.ScreenShareAudio], { onlySubscribed: false });
+  const activeShareHasSound =
+    !!activeScreenShare && !activeScreenShare.participant.isLocal && shareAudio.some((t) => t.participant.identity === activeScreenShare.participant.identity);
+  const [shareVolume, setShareVolumeState] = useState(readShareVolume);
   const cameraTracks = useTracks([Track.Source.Camera]).filter(isTrackReference);
   const cameraTrackByIdentity = new Map(cameraTracks.map((t) => [t.participant.identity, t]));
   const call = useVoiceCall();
@@ -290,6 +296,18 @@ export default function VoiceCallBody({ room, onLeave }: { room: MatrixRoom; onL
               <span className="nu-voice-panel__share-name" data-nu-role="voice-screen-share-name">
                 {activeScreenShare.participant.isLocal ? 'Your screen' : `${participantDisplayName(room, activeScreenShare.participant)}’s screen`}
               </span>
+            )}
+            {activeShareHasSound && (
+              <VolumeSlider
+                value={shareVolume}
+                deafened={deafened}
+                role="voice-screen-share-volume"
+                label="Volume for the shared screen"
+                onChange={(next) => {
+                  setShareVolumeState(next);
+                  setShareVolume(livekitRoom, next);
+                }}
+              />
             )}
             <button
               type="button"
