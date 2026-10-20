@@ -2,7 +2,7 @@
 
 ## Roadmap and model split
 
-The newest plan is the Claude Docs doc "Purrlor: WATCH and AUDIO" (2026-10-19), ON HOLD since 2026-10-19 (nothing built yet, start it only when asked): a YouTube-style WATCH and a Spotify-style AUDIO on the rail, built from profile pages. Live streaming is paused (its notes are in the doc). It builds on the `rail-sections` branch (Home, Feed and Chat on the rail; pushed, not merged into `master`, also on hold):
+The newest plan is the Claude Docs doc "Purrlor: WATCH and AUDIO" (2026-10-19), ON HOLD since 2026-10-19 (nothing built yet, start it only when asked): a YouTube-style WATCH and a Spotify-style AUDIO on the rail, built from profile pages. Live streaming is paused (its notes are in the doc). It builds on the `rail-sections` branch (Home, Feed and Chat on the rail), merged into `master` 2026-10-19:
 https://claude.ai/code/artifact/e757fa66-41eb-42c7-964e-037b3ca376df
 
 The previous plan is the Claude Docs doc "Purrlor: link embeds for messages and posts" (2026-10-04):
