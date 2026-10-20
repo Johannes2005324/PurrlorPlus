@@ -1,6 +1,6 @@
 import { useContext, useEffect, useId, useState } from 'react';
 import { useSetAtom } from 'jotai';
-import { profileUserIdAtom, selectedRoomIdAtom, selectedSpaceIdAtom } from '../../app/state/selection';
+import { profileUserIdAtom, selectedRoomIdAtom, selectedSpaceIdAtom, railSectionAtom } from '../../app/state/selection';
 import { Avatar } from '../../components/Avatar';
 import { MatrixClientContext } from '../../matrix/MatrixClientContext';
 import { useMediaUrl } from '../../matrix/hooks/useMediaUrl';
@@ -86,6 +86,7 @@ function SpaceRow({ space }: { space: PageSpace }) {
   const mx = useContext(MatrixClientContext);
   const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
   const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
+  const setRailSection = useSetAtom(railSectionAtom);
   const setProfileUserId = useSetAtom(profileUserIdAtom);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string>();
@@ -94,6 +95,7 @@ function SpaceRow({ space }: { space: PageSpace }) {
   const open = (roomId: string) => {
     setProfileUserId(null);
     setSelectedRoomId(null);
+    setRailSection('messages');
     setSelectedSpaceId(roomId);
   };
 

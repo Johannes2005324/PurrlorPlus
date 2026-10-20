@@ -14,6 +14,8 @@ export type VoiceChannelParticipant = {
   deafened: boolean;
   /** When they joined, in ms; absent from a token server older than this field. */
   joinedAt?: number;
+  /** Whether they're sharing their screen; absent from a token server older than this field. */
+  screenSharing?: boolean;
 };
 
 /**

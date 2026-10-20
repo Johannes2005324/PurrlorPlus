@@ -23,11 +23,25 @@ export const channelComposerFocusAtom = atom(0);
 export const selectedSpaceViewAtom = atom<'feed' | 'events' | 'news' | null>(null);
 
 /**
+ * The app's three top-level sections, picked in the server rail: the Home dashboard, the social
+ * Feed, and Messages (DMs and Spaces). Each keeps its own place in the atoms below: going Home and
+ * back to Messages returns to the same Space and room.
+ */
+export type RailSection = 'home' | 'feed' | 'messages';
+export const railSectionAtom = atom<RailSection>('home');
+
+/**
  * Whether the global feed (public posts from every public Space, see matrix/globalFeed.ts) is
  * open in the main pane. It isn't tied to any Space, so it sits outside `selectedSpaceViewAtom`;
  * picking a Space, a channel, or a Space's own Posts closes it.
  */
-export const globalFeedOpenAtom = atom<boolean>(false);
+export const globalFeedOpenAtom = atom(
+  (get) => get(railSectionAtom) === 'feed',
+  (get, set, open: boolean) => {
+    if (open) set(railSectionAtom, 'feed');
+    else if (get(railSectionAtom) === 'feed') set(railSectionAtom, 'messages');
+  }
+);
 
 /**
  * Which page of the social side is showing while `globalFeedOpenAtom` is set: the Everyone or

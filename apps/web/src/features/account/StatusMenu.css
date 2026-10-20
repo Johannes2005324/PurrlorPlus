@@ -1,0 +1,97 @@
+/* ---- Status popover ---- */
+
+.nu-status-menu__menu {
+  position: fixed;
+  width: 260px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--nu-space-1);
+  border-radius: var(--nu-radius-lg);
+  background: var(--nu-color-bg-elevated);
+  border: 1px solid var(--nu-color-border);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  animation: nu-status-menu-in 0.14s ease-out;
+}
+
+@keyframes nu-status-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.nu-status-menu__menu-item {
+  appearance: none;
+  border: none;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: var(--nu-space-3);
+  padding: var(--nu-space-2) var(--nu-space-3);
+  border-radius: var(--nu-radius-md);
+  background: transparent;
+  color: var(--nu-color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.nu-status-menu__menu-item:hover {
+  background: var(--nu-color-bg-tertiary);
+  color: var(--nu-color-text-primary);
+}
+
+.nu-status-menu__menu-item[aria-checked='true'] {
+  background: color-mix(in srgb, var(--nu-color-accent) 12%, transparent);
+  color: var(--nu-color-text-primary);
+}
+
+.nu-status-menu__menu-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--nu-radius-full);
+}
+
+.nu-status-menu__menu-dot--online {
+  background: var(--nu-color-success);
+}
+
+.nu-status-menu__menu-dot--unavailable {
+  background: var(--nu-color-warning);
+}
+
+.nu-status-menu__menu-dot--offline {
+  background: transparent;
+  box-shadow: inset 0 0 0 2.5px var(--nu-color-text-muted);
+}
+
+.nu-status-menu__menu-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nu-status-menu__menu-label {
+  font-size: var(--nu-font-size-sm);
+  font-weight: 700;
+}
+
+.nu-status-menu__menu-hint {
+  font-size: var(--nu-font-size-xs);
+  color: var(--nu-color-text-muted);
+}
+
+.nu-status-menu__menu-divider {
+  height: 1px;
+  margin: var(--nu-space-1) var(--nu-space-2);
+  background: var(--nu-color-border);
+}
+
+.nu-status-menu__menu-error {
+  margin: 0;
+  padding: var(--nu-space-1) var(--nu-space-3);
+  color: var(--nu-color-danger);
+  font-size: var(--nu-font-size-xs);
+}

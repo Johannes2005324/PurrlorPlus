@@ -169,13 +169,6 @@ html[data-nu-density='irc'] .nu-member-list__item-status {
   display: none;
 }
 
-/* ---- Your panel at the foot of the list: smaller buttons, so your name has the room. ---- */
-
-html[data-nu-density='irc'] .nu-user-panel__button {
-  width: 26px;
-  height: 26px;
-}
-
 /* ---- The timeline: the time in a dim console column down the left on every line, then the name
    with the text running on after it, as in the mockup's lists (the News window's rows). ---- */
 

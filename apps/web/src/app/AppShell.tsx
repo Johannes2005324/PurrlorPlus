@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import { ServerRail } from '../features/servers/ServerRail';
 import { ChannelList } from '../features/channels/ChannelList';
@@ -45,8 +45,8 @@ import { useJoinFromInviteLink } from '../matrix/hooks/useJoinFromInviteLink';
 import { useOpenRoomFromNotification } from '../matrix/hooks/useOpenRoomFromNotification';
 import { useRecoveryStatus } from '../matrix/hooks/useRecoveryStatus';
 import { WelcomeGuideHost } from '../features/onboarding/WelcomeGuideHost';
-import { openPostAtom, globalFeedOpenAtom, profileUserIdAtom, selectedRoomIdAtom, selectedSpaceViewAtom } from './state/selection';
-import { desktopMemberListHiddenAtom, mobileMemberListOpenAtom, mobileSpacesOpenAtom } from './state/mobile';
+import { openPostAtom, globalFeedOpenAtom, railSectionAtom, profileUserIdAtom, selectedRoomIdAtom, selectedSpaceViewAtom } from './state/selection';
+import { desktopMemberListHiddenAtom, mobileMemberListOpenAtom, mobileColumnOpenAtom } from './state/mobile';
 
 /** Real Discord-shaped three-pane shell, wired to live Matrix data (Phase 1+). */
 export function AppShell() {
@@ -59,15 +59,20 @@ export function AppShell() {
   // rooms, so there's no one member list that belongs beside them. With no room open at all there
   // are no members to list, and an empty column just looked unfinished.
   const globalFeedOpen = useAtomValue(globalFeedOpenAtom);
+  const onHome = useAtomValue(railSectionAtom) === 'home';
   const spaceView = useAtomValue(selectedSpaceViewAtom);
   const profileOpen = !!useAtomValue(profileUserIdAtom);
   const postOpen = !!useAtomValue(openPostAtom);
   const musicOn = !!useAtomValue(musicQueueAtom);
   const tickerOn = useTickerOn();
-  const mobileSpacesOpen = useAtomValue(mobileSpacesOpenAtom);
+  const [mobileColumnOpen, setMobileColumnOpen] = useAtom(mobileColumnOpenAtom);
+  // Choosing a room or a Space view from the column closes it again (the tab bar's Chat tab opens it).
+  useEffect(() => {
+    setMobileColumnOpen(false);
+  }, [selectedRoomId, spaceView, setMobileColumnOpen]);
   // On a phone the main pane only shows once there's something in it: a room, a Space's Posts,
   // or the global feed. The last two aren't rooms, so a room check alone left them invisible.
-  const mainPaneHasContent = !!selectedRoomId || spaceView !== null || globalFeedOpen || profileOpen || postOpen;
+  const mainPaneHasContent = onHome || !!selectedRoomId || spaceView !== null || globalFeedOpen || profileOpen || postOpen;
   useOpenRoomFromNotification();
   useNavigationHistory();
   useVisualViewport();
@@ -85,13 +90,13 @@ export function AppShell() {
       // Below the responsive breakpoint (styles/base/shell.css) the shell shows one "screen" at
       // a time instead of all four columns side by side — these two attributes are what the
       // media query switches on. They're no-ops above the breakpoint.
-      data-nu-mobile-pane={mobileSpacesOpen ? 'spaces' : mainPaneHasContent ? 'chat' : 'sidebar'}
+      data-nu-mobile-pane={mobileColumnOpen ? 'sidebar' : mainPaneHasContent ? 'chat' : 'sidebar'}
       data-nu-mobile-members-open={mobileMembersOpen}
       data-nu-music={musicOn ? 'on' : undefined}
       data-nu-ticker={tickerOn ? 'on' : undefined}
       // The global feed's own side column (FeedSidebar) takes the member list's place.
       data-nu-side={globalFeedOpen && !profileOpen && !postOpen ? 'feed' : undefined}
-      data-nu-members-hidden={membersHidden || !selectedRoomId || globalFeedOpen || profileOpen || postOpen || spaceView !== null}
+      data-nu-members-hidden={membersHidden || onHome || !selectedRoomId || globalFeedOpen || profileOpen || postOpen || spaceView !== null}
     >
       <Wallpaper />
       <StatusClock />

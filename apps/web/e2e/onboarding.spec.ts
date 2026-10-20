@@ -21,7 +21,11 @@ async function makeSpace(owner: TestUser, { listed }: { listed: boolean }): Prom
   return { spaceId, name };
 }
 
-const railTile = (page: Page, name: string) => page.locator(`[data-nu-role="server-rail-item"][aria-label="${name}"]`);
+/** Chat's column is showing this Space's channels. */
+const inSpace = async (page: Page, name: string) => {
+  await expect(role(page, 'chat-back')).toBeVisible();
+  await expect(page.locator('.nu-channel-list').getByText(name).first()).toBeVisible();
+};
 
 test('someone new is welcomed, joins a public Space from the guide, and lands in it', async ({ page }) => {
   const owner = await createUser('owner');
@@ -50,7 +54,7 @@ test('someone new is welcomed, joins a public Space from the guide, and lands in
   await role(page, 'welcome-next').click();
   await role(page, 'welcome-finish').click();
   await expect(guide).toBeHidden();
-  await expect(railTile(page, name)).toHaveAttribute('aria-current', 'page');
+  await inSpace(page, name);
 
   // Seen: saved to the account, and the name with it.
   await eventually(
@@ -84,10 +88,10 @@ test('someone who skips the guide gets the ways in, and joins with a pasted invi
   // A Purrlor invite link, as Space Settings makes them.
   await role(empty, 'join-with-link-input').fill(`https://some-purrlor.example/?invite=${enc(spaceId)}&via=localhost`);
   await role(empty, 'join-with-link-submit').click();
-  await expect(railTile(page, name)).toHaveAttribute('aria-current', 'page');
+  await inSpace(page, name);
 
   // And the guide opens again from Account Settings.
-  await role(page, 'user-panel-settings').click();
+  await role(page, 'server-rail-settings').click();
   await role(page, 'account-settings-show-welcome').click();
   await expect(role(page, 'welcome-guide')).toBeVisible();
 });

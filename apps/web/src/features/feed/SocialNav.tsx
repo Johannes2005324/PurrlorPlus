@@ -1,15 +1,13 @@
 import type { ReactNode } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import type { Room } from 'matrix-js-sdk';
-import { composerFocusAtom, feedSearchAtom, unreadActivityCountAtom } from '../../app/state/feed';
+import { composerFocusAtom, feedSearchAtom } from '../../app/state/feed';
 import { openPostAtom, profileUserIdAtom, socialSpaceIdAtom, socialViewAtom, type SocialView } from '../../app/state/selection';
 import { Avatar } from '../../components/Avatar';
 import { Icon, type IconName } from '../../components/Icon';
 import { UnreadBadge } from '../../components/UnreadBadge';
-import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import { useHasNewPosts } from '../../matrix/hooks/useHasNewPosts';
 import { useSpaces } from '../../matrix/hooks/useSpaces';
-import { useUserProfile } from '../../matrix/hooks/useUserProfile';
 import { useOpenSocial, useOpenSocialSpace } from './useOpenSocial';
 
 function NavRow({
@@ -73,7 +71,6 @@ function SpacePostsRow({ space, active }: { space: Room; active: boolean }) {
 const VIEWS: { view: SocialView; label: string; icon: IconName }[] = [
   { view: 'everyone', label: 'Everyone', icon: 'globe' },
   { view: 'following', label: 'Following', icon: 'users' },
-  { view: 'notifications', label: 'Notifications', icon: 'bell' },
 ];
 
 /**
@@ -83,18 +80,12 @@ const VIEWS: { view: SocialView; label: string; icon: IconName }[] = [
  * app. On a phone the column is off screen while the feed shows, so the feed's header keeps tabs.
  */
 export function SocialNav() {
-  const mx = useMatrixClient();
-  const myUserId = mx.getUserId() ?? '';
-  const me = useUserProfile(myUserId);
   const view = useAtomValue(socialViewAtom);
   const profileUserId = useAtomValue(profileUserIdAtom);
   const postOpen = !!useAtomValue(openPostAtom);
   const socialSpaceId = useAtomValue(socialSpaceIdAtom);
-  const unread = useAtomValue(unreadActivityCountAtom);
   const spaces = useSpaces();
   const openSocial = useOpenSocial();
-  const setProfileUserId = useSetAtom(profileUserIdAtom);
-  const setOpenPost = useSetAtom(openPostAtom);
   const setSearch = useSetAtom(feedSearchAtom);
   const requestComposerFocus = useSetAtom(composerFocusAtom);
   // A profile or a post's page sits over the timeline; the row for what's underneath isn't where you are.
@@ -128,21 +119,9 @@ export function SocialNav() {
             role={`social-nav-${item.view}`}
             icon={<Icon name={item.icon} size={18} />}
             label={item.label}
-            unread={item.view === 'notifications' && unread > 0}
-            badge={item.view === 'notifications' && <UnreadBadge total={unread} highlight={unread} />}
             onSelect={() => openSocial(item.view)}
           />
         ))}
-        <NavRow
-          active={profileUserId === myUserId && !postOpen}
-          role="social-nav-profile"
-          icon={<Avatar name={me.name} mxcUrl={me.avatarUrl} size={20} />}
-          label="Your profile"
-          onSelect={() => {
-            setOpenPost(null);
-            setProfileUserId(myUserId);
-          }}
-        />
         {spaces.length > 0 && (
           <div className="nu-channel-list__category" data-nu-role="social-nav-spaces">
             <div className="nu-channel-list__section-header">Posts in your spaces</div>

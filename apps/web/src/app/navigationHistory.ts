@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useStore, type Atom, type ExtractAtomValue } from 'jotai';
-import { mobileMemberListOpenAtom, mobileSpacesOpenAtom } from './state/mobile';
+import { mobileMemberListOpenAtom, mobileColumnOpenAtom } from './state/mobile';
 import {
-  globalFeedOpenAtom,
   openPostAtom,
   profileUserIdAtom,
+  railSectionAtom,
   selectedRoomIdAtom,
   selectedSpaceIdAtom,
   selectedSpaceViewAtom,
@@ -32,12 +32,12 @@ const VIEW_ATOMS = {
   spaceId: selectedSpaceIdAtom,
   roomId: selectedRoomIdAtom,
   spaceView: selectedSpaceViewAtom,
-  globalFeed: globalFeedOpenAtom,
+  railSection: railSectionAtom,
   socialView: socialViewAtom,
   socialSpaceId: socialSpaceIdAtom,
   profileUserId: profileUserIdAtom,
   openPost: openPostAtom,
-  mobileSpaces: mobileSpacesOpenAtom,
+  mobileColumn: mobileColumnOpenAtom,
   mobileMembers: mobileMemberListOpenAtom,
 } as const;
 

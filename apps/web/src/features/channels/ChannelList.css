@@ -692,3 +692,24 @@
   color: var(--nu-color-danger);
   font-size: var(--nu-font-size-sm);
 }
+
+/* Back from a Space's channels to Chat's top level. */
+.nu-channel-list__back {
+  appearance: none;
+  border: none;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--nu-space-1);
+  padding: var(--nu-space-2) var(--nu-space-3);
+  background: transparent;
+  color: var(--nu-color-text-muted);
+  font: inherit;
+  font-size: var(--nu-font-size-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.nu-channel-list__back:hover {
+  color: var(--nu-color-text-primary);
+}

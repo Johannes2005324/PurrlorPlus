@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { logIn, message, openChannel, role } from './app';
+import { logIn, message, openChannel, openChat, role } from './app';
 import { api, createSpaceWithChannel, createUser, eventually, latestEvents, type TestUser } from './matrix';
 
 const enc = encodeURIComponent;
@@ -86,16 +86,15 @@ test('a webhook’s post marks its Space unread for someone elsewhere', async ({
   await page.keyboard.press('Escape');
 
   // Somewhere else, so the post arrives unread.
-  await role(page, 'server-rail-global-feed').click();
-  await expect(role(page, 'social-nav')).toBeVisible();
-  const tile = page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`);
-  await expect(tile).not.toHaveClass(/nu-server-rail__item--unread/);
+  await openChat(page);
+  const tile = page.locator(`[data-nu-role="chat-space"][aria-label="${spaceName}"]`);
+  await expect(tile).not.toHaveClass(/nu-chat-spaces__row--unread/);
 
   await eventually(
     () => post(url, { content: 'Build 43 passed' }).then((r) => r.status),
     (status) => status === 204
   );
-  await expect(tile).toHaveClass(/nu-server-rail__item--unread/);
+  await expect(tile).toHaveClass(/nu-chat-spaces__row--unread/);
 });
 
 test('a person can’t pass themselves off as a webhook', async ({ page }) => {

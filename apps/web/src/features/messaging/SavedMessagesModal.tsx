@@ -1,5 +1,5 @@
-import { useAtom } from 'jotai';
-import { selectedRoomIdAtom, selectedSpaceIdAtom } from '../../app/state/selection';
+import { useAtom, useSetAtom } from 'jotai';
+import { selectedRoomIdAtom, selectedSpaceIdAtom, railSectionAtom } from '../../app/state/selection';
 import { Modal } from '../../components/Modal';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import { useSavedMessages } from '../../matrix/hooks/useSavedMessages';
@@ -20,6 +20,7 @@ export function SavedMessagesModal({ onClose }: { onClose: () => void }) {
   const saved = useSavedMessages();
   const [, setSelectedSpaceId] = useAtom(selectedSpaceIdAtom);
   const [, setSelectedRoomId] = useAtom(selectedRoomIdAtom);
+  const setRailSection = useSetAtom(railSectionAtom);
 
   const sorted = [...saved].sort((a, b) => b.savedAt - a.savedAt);
 
@@ -28,6 +29,7 @@ export function SavedMessagesModal({ onClose }: { onClose: () => void }) {
     if (!room) return;
     setSelectedSpaceId(getParentSpace(mx, room)?.roomId ?? null);
     setSelectedRoomId(roomId);
+    setRailSection('messages');
     onClose();
   };
 

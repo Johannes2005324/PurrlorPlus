@@ -3,7 +3,7 @@ import { useAtomValue, useSetAtom } from 'jotai';
 import type { MatrixClient } from 'matrix-js-sdk';
 import { activityAtom } from '../../app/state/feed';
 import {
-  globalFeedOpenAtom,
+  railSectionAtom,
   pendingJumpTargetAtom,
   profileUserIdAtom,
   selectedRoomIdAtom,
@@ -152,7 +152,7 @@ function ActivityRow({ item, unread }: { item: ActivityItem; unread: boolean }) 
   const openPost = useOpenPost();
   const mx = useMatrixClient();
   const setProfileUserId = useSetAtom(profileUserIdAtom);
-  const setGlobalFeedOpen = useSetAtom(globalFeedOpenAtom);
+  const setGlobalFeedOpen = useSetAtom(railSectionAtom);
   const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
   const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
   const setPendingJump = useSetAtom(pendingJumpTargetAtom);
@@ -163,7 +163,7 @@ function ActivityRow({ item, unread }: { item: ActivityItem; unread: boolean }) 
 
   const open = () => {
     if (inChat) {
-      setGlobalFeedOpen(false);
+      setGlobalFeedOpen('messages');
       setSpaceView(null);
       setSelectedSpaceId(findParentSpaceId(mx, item.roomId));
       setSelectedRoomId(item.roomId);

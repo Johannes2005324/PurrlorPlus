@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { logIn, openChannel, role } from './app';
+import { logIn, openChannel, role, openSpace } from './app';
 import { api, createSpaceWithChannel, createUser, eventually, latestEvents, uniqueName } from './matrix';
 
 test('publish a post to a Space', async ({ page }) => {
@@ -7,7 +7,7 @@ test('publish a post to a Space', async ({ page }) => {
   const { spaceId, spaceName } = await createSpaceWithChannel(alice);
 
   await logIn(page, alice);
-  await page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(page, spaceName);
   await role(page, 'channel-list-feed').click();
 
   // The first post also creates your feed room in this Space (matrix/feed.ts).

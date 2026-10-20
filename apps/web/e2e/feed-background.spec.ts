@@ -24,7 +24,7 @@ test('a picture set in Appearance shows behind the main feed, and can be taken a
     'base64'
   );
 
-  await role(page, 'user-panel-settings').click();
+  await role(page, 'server-rail-settings').click();
   await page.getByRole('button', { name: 'Appearance' }).click();
   const setting = role(page, 'feed-background-setting');
   await setting.locator('input[type="file"]').setInputFiles({ name: 'wall.png', mimeType: 'image/png', buffer: png });

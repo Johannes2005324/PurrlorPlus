@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSetAtom } from 'jotai';
 import type { Room } from 'matrix-js-sdk';
-import { pendingJumpTargetAtom, selectedRoomIdAtom, selectedSpaceIdAtom, selectedSpaceViewAtom } from './state/selection';
+import { pendingJumpTargetAtom, selectedRoomIdAtom, selectedSpaceIdAtom, selectedSpaceViewAtom, railSectionAtom } from './state/selection';
 import { useMatrixClient } from '../matrix/MatrixClientContext';
 import { readCalendarEvents, readOwnRsvp, setRsvp, upcomingEvents, type CalendarEvent } from '../matrix/calendar';
 import { useReminders } from '../matrix/hooks/useReminders';
@@ -35,6 +35,7 @@ export function RemindersSettings({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string>();
   const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
   const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
+  const setRailSection = useSetAtom(railSectionAtom);
   const setSpaceView = useSetAtom(selectedSpaceViewAtom);
   const setPendingJump = useSetAtom(pendingJumpTargetAtom);
 
@@ -54,6 +55,7 @@ export function RemindersSettings({ onClose }: { onClose: () => void }) {
     setSpaceView(null);
     setSelectedSpaceId(findParentSpaceId(mx, reminder.roomId));
     setSelectedRoomId(reminder.roomId);
+    setRailSection('messages');
     setPendingJump({ roomId: reminder.roomId, eventId: reminder.eventId });
     onClose();
   };

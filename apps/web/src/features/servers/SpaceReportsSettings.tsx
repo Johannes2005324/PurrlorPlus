@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSetAtom } from 'jotai';
 import { RoomEvent, type Room } from 'matrix-js-sdk';
-import { pendingJumpTargetAtom, selectedRoomIdAtom, selectedSpaceIdAtom } from '../../app/state/selection';
+import { pendingJumpTargetAtom, selectedRoomIdAtom, selectedSpaceIdAtom, railSectionAtom } from '../../app/state/selection';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import { banMember, kickMember } from '../../matrix/moderation';
 import { canSendStateEvent } from '../../matrix/permissions';
@@ -58,6 +58,7 @@ function ReportCard({ report, space, reviewRoomId }: { report: Report; space: Ro
   const mx = useMatrixClient();
   const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
   const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
+  const setRailSection = useSetAtom(railSectionAtom);
   const setPendingJump = useSetAtom(pendingJumpTargetAtom);
   const openPost = useOpenPost();
   const [busy, setBusy] = useState(false);
@@ -92,6 +93,7 @@ function ReportCard({ report, space, reviewRoomId }: { report: Report; space: Ro
     }
     setSelectedSpaceId(space.roomId);
     setSelectedRoomId(report.room_id);
+    setRailSection('messages');
     setPendingJump({ roomId: report.room_id, eventId: report.event_id });
   };
 

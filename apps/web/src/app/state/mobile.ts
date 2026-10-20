@@ -18,8 +18,9 @@ export const mobileMemberListOpenAtom = atom<boolean>(false);
 export const desktopMemberListHiddenAtom = atomWithStorage<boolean>('nekous_member_list_hidden', false);
 
 /**
- * Whether the phone layout is showing its Spaces screen: the server rail laid out as a grid, opened
- * from the bottom tab bar's Spaces tab (MobileTabBar.tsx). Choosing a Space or a DM there closes it.
- * Has no effect above the responsive breakpoint.
+ * Whether the phone layout is showing the Chat column (the channel list: Direct messages and Spaces,
+ * or a Space's channels) even though a room is open, which would otherwise take the whole screen.
+ * Set by the bottom tab bar's Chat tab (MobileTabBar.tsx); AppShell clears it once a room or a
+ * Space view is chosen. Has no effect above the responsive breakpoint.
  */
-export const mobileSpacesOpenAtom = atom<boolean>(false);
+export const mobileColumnOpenAtom = atom<boolean>(false);

@@ -28,8 +28,26 @@ export async function logIn(page: Page, user: TestUser): Promise<void> {
   await expect(role(page, 'server-rail').or(role(page, 'mobile-tabs')).filter({ visible: true }).first()).toBeVisible();
 }
 
+/** Chat's top level (Direct messages and Spaces): the rail's Chat item, or the phone's Chat tab. */
+export async function openChat(page: Page): Promise<void> {
+  const tab = role(page, 'mobile-tab-chat');
+  if (await tab.isVisible()) await tab.click();
+  else await role(page, 'server-rail-chat').click();
+  const back = role(page, 'chat-back');
+  // Coming from Home or Feed, Chat returns to the Space you were in: go back up from it.
+  await expect(back.or(role(page, 'chat-spaces'))).toBeVisible();
+  if (await back.isVisible()) await back.click();
+  await expect(role(page, 'chat-spaces')).toBeVisible();
+}
+
+/** Opens a Space from Chat's list. */
+export async function openSpace(page: Page, spaceName: string): Promise<void> {
+  await openChat(page);
+  await page.locator(`[data-nu-role="chat-space"][aria-label="${spaceName}"]`).click();
+}
+
 export async function openChannel(page: Page, spaceName: string, channelName: string): Promise<void> {
-  await page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(page, spaceName);
   // The name, not the row's middle: hovering a row shows its actions over its right half.
   await role(page, 'channel-list-item').filter({ hasText: channelName }).getByText(channelName, { exact: true }).click();
   await expect(role(page, 'composer-input')).toBeVisible();
@@ -66,4 +84,15 @@ export async function windowsSettled(page: Page): Promise<void> {
   await page.waitForFunction(() =>
     document.getAnimations().every((a) => !(a instanceof CSSAnimation) || a.animationName !== 'nu-window-in' || a.playState === 'finished')
   );
+}
+
+/** Opens your own profile: the rail's Profile menu ("View profile"), or the phone's You tab. */
+export async function openOwnProfile(page: Page): Promise<void> {
+  const tab = role(page, 'mobile-tab-you');
+  if (await tab.isVisible()) {
+    await tab.click();
+    return;
+  }
+  await role(page, 'server-rail-profile').click();
+  await role(page, 'status-menu-view-profile').click();
 }

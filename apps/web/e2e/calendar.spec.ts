@@ -1,11 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
-import { clickMessageAction, logIn, message, openChannel, role } from './app';
+import { clickMessageAction, logIn, message, openChannel, role, openSpace } from './app';
 import { api, createSpaceWithChannel, createUser, eventually, latestEvents, sendText, type TestUser } from './matrix';
 
 const enc = encodeURIComponent;
 
 async function openEvents(page: Page, spaceName: string) {
-  await page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(page, spaceName);
   await role(page, 'channel-list-events').click();
   await expect(role(page, 'calendar')).toBeVisible();
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSetAtom } from 'jotai';
-import { selectedRoomIdAtom, selectedSpaceIdAtom } from '../../app/state/selection';
+import { selectedRoomIdAtom, selectedSpaceIdAtom, railSectionAtom } from '../../app/state/selection';
 import { useMatrixClient } from '../MatrixClientContext';
 import { getParentSpace } from '../voice';
 import { joinTarget } from '../joinLinks';
@@ -39,6 +39,7 @@ export function useJoinFromInviteLink(): JoinFromInviteLinkState {
   const mx = useMatrixClient();
   const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
   const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
+  const setRailSection = useSetAtom(railSectionAtom);
   const [state, setState] = useState<JoinFromInviteLinkState>({ status: 'idle' });
 
   useEffect(() => {
@@ -65,9 +66,11 @@ export function useJoinFromInviteLink(): JoinFromInviteLinkState {
         if (room.isSpaceRoom()) {
           setSelectedSpaceId(room.roomId);
           setSelectedRoomId(null);
+          setRailSection('messages');
         } else {
           setSelectedSpaceId(getParentSpace(mx, room)?.roomId ?? null);
           setSelectedRoomId(room.roomId);
+          setRailSection('messages');
         }
         setState({ status: 'idle' });
       })
@@ -78,7 +81,7 @@ export function useJoinFromInviteLink(): JoinFromInviteLinkState {
     return () => {
       cancelled = true;
     };
-  }, [mx, setSelectedSpaceId, setSelectedRoomId]);
+  }, [mx, setSelectedSpaceId, setSelectedRoomId, setRailSection]);
 
   return state;
 }

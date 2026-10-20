@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useSetAtom } from 'jotai';
-import { profileUserIdAtom, selectedRoomIdAtom, selectedSpaceIdAtom } from '../../app/state/selection';
+import { profileUserIdAtom, selectedRoomIdAtom, selectedSpaceIdAtom, railSectionAtom } from '../../app/state/selection';
 import { readMentionInvite } from '../mentionInvites';
 import { useMatrixClient } from '../MatrixClientContext';
 import { getParentSpace } from '../voice';
@@ -17,6 +17,7 @@ export function useOpenRoomFromNotification(): void {
   const mx = useMatrixClient();
   const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
   const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
+  const setRailSection = useSetAtom(railSectionAtom);
   const openFeedRoom = useOpenFeedRoom();
   const setProfileUserId = useSetAtom(profileUserIdAtom);
 
@@ -34,6 +35,7 @@ export function useOpenRoomFromNotification(): void {
       }
       setSelectedSpaceId(getParentSpace(mx, room)?.roomId ?? null);
       setSelectedRoomId(roomId);
+      setRailSection('messages');
     };
 
     const params = new URLSearchParams(window.location.search);
@@ -53,5 +55,5 @@ export function useOpenRoomFromNotification(): void {
     };
     navigator.serviceWorker.addEventListener('message', handleMessage);
     return () => navigator.serviceWorker.removeEventListener('message', handleMessage);
-  }, [mx, setSelectedSpaceId, setSelectedRoomId, openFeedRoom, setProfileUserId]);
+  }, [mx, setSelectedSpaceId, setSelectedRoomId, openFeedRoom, setProfileUserId, setRailSection]);
 }

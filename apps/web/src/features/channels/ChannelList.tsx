@@ -10,6 +10,7 @@ import {
   selectedSpaceViewAtom,
   channelComposerFocusAtom,
   globalFeedOpenAtom,
+  railSectionAtom,
   openPostAtom,
   profileUserIdAtom,
 } from '../../app/state/selection';
@@ -56,7 +57,8 @@ import { isDemoMode } from '../../demo/demoMode';
 import { adoptDefaultVoiceServer } from '../../matrix/deploymentDefaults';
 import { addVoiceHints, removeRoomFromSpace, reorderSpaceChildren } from '../../matrix/spaceChildren';
 import { useVoiceCall } from '../voice/voiceCallContext';
-import { UserPanel } from '../account/UserPanel';
+import { SavedMessagesModal } from '../messaging/SavedMessagesModal';
+import { ChatSpaces } from './ChatSpaces';
 import { AddExistingChannelModal } from './AddExistingChannelModal';
 import { CreateChannelModal } from './CreateChannelModal';
 import { SpaceCard } from './SpaceCard';
@@ -561,10 +563,11 @@ const voiceDefaultedSpaces = new Set<string>();
  */
 export function ChannelList() {
   const mx = useMatrixClient();
-  const selectedSpaceId = useAtomValue(selectedSpaceIdAtom);
+  const [selectedSpaceId, setSelectedSpaceId] = useAtom(selectedSpaceIdAtom);
   const [selectedRoomId, setSelectedRoomId] = useAtom(selectedRoomIdAtom);
   const [spaceView, setSpaceView] = useAtom(selectedSpaceViewAtom);
   const [globalFeedOpen, setGlobalFeedOpen] = useAtom(globalFeedOpenAtom);
+  const section = useAtomValue(railSectionAtom);
   const [profileUserId, setProfileUserId] = useAtom(profileUserIdAtom);
   const openPost = useAtomValue(openPostAtom);
   const space = useRoom(selectedSpaceId);
@@ -589,6 +592,7 @@ export function ChannelList() {
   const [webhooksRoom, setWebhooksRoom] = useState<Room | null>(null);
   const [settingsRoom, setSettingsRoom] = useState<Room | null>(null);
   const [showStartDm, setShowStartDm] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
   const [showAddExistingChannel, setShowAddExistingChannel] = useState(false);
   const { confirm, dialog: confirmDialog } = useConfirm();
 
@@ -604,13 +608,21 @@ export function ChannelList() {
     setProfileUserId(null);
   };
 
-  // Opening a Space leaves nothing selected in it (the rail's selectSpace). Its unseen news comes
+  // Chat's top level lists the Spaces; opening one (or going back) leaves nothing chosen in it.
+  const openSpace = (id: string | null) => {
+    setProfileUserId(null);
+    setSelectedSpaceId(id);
+    setSelectedRoomId(null);
+    setSpaceView(null);
+  };
+
+  // Opening a Space leaves nothing selected in it (openSpace above). Its unseen news comes
   // first, else its first text channel from the top of this list (matrix/spaceNews.ts), so a Space
   // never opens onto an empty page. Anything already chosen — a channel, Posts, Events, a jump to
   // a message from a notification — is left alone.
   // Not on a phone: there the page is this channel list until something is picked, and Back from a
   // chat leaves nothing chosen, so landing would put you straight back in the chat you just left.
-  const nothingChosen = !!space && !selectedRoomId && spaceView === null && !globalFeedOpen && !profileUserId && !openPost;
+  const nothingChosen = section === 'messages' && !!space && !selectedRoomId && spaceView === null && !globalFeedOpen && !profileUserId && !openPost;
   useEffect(() => {
     if (!space || !nothingChosen || window.matchMedia?.(PHONE_WIDTH).matches) return;
     // Read fresh, not from spaceRooms/categories: right after switching Spaces those still hold the
@@ -758,7 +770,30 @@ export function ChannelList() {
         <NowPlayingCard />
         <MusicPlayerBar variant="card" />
         <ActiveCallBar />
-        <UserPanel />
+      </aside>
+    );
+  }
+
+  // Home is a page of its own; this column only has a small nav for it (no DM list: that's Messages).
+  if (section === 'home') {
+    return (
+      <aside className="nu-channel-list" data-nu-role="channel-list">
+        <div className="nu-channel-list__header" data-nu-role="channel-list-header">
+          <span className="nu-channel-list__header-title">Home</span>
+        </div>
+        <div className="nu-channel-list__body" data-nu-role="channel-list-body">
+          <div className="nu-channel-list__row">
+            <button type="button" className="nu-channel-list__item nu-channel-list__item--active" data-nu-role="home-nav-overview" aria-current="page">
+              <span className="nu-channel-list__item-icon" aria-hidden="true">
+                <Icon name="paw" size={18} />
+              </span>
+              <span className="nu-channel-list__item-name">What’s happening</span>
+            </button>
+          </div>
+        </div>
+        <NowPlayingCard />
+        <MusicPlayerBar variant="card" />
+        <ActiveCallBar />
       </aside>
     );
   }
@@ -766,26 +801,31 @@ export function ChannelList() {
   return (
     <aside className="nu-channel-list" data-nu-role="channel-list">
       {!isDirectMessagesView && space ? (
-        <SpaceCard
-          space={space}
-          canManageSpace={canManageSpace}
-          onOpenSettings={() => setShowSpaceSettings(true)}
-          onAddExisting={() => setShowAddExistingChannel(true)}
-          onCreateChannel={() => setShowCreateChannel(true)}
-        />
+        <>
+          <button type="button" className="nu-channel-list__back" data-nu-role="chat-back" onClick={() => openSpace(null)}>
+            <span aria-hidden="true">←</span> Chat
+          </button>
+          <SpaceCard
+            space={space}
+            canManageSpace={canManageSpace}
+            onOpenSettings={() => setShowSpaceSettings(true)}
+            onAddExisting={() => setShowAddExistingChannel(true)}
+            onCreateChannel={() => setShowCreateChannel(true)}
+          />
+        </>
       ) : (
         <div className="nu-channel-list__header" data-nu-role="channel-list-header">
-          <span className="nu-channel-list__header-title">{isDirectMessagesView ? 'Direct messages' : 'Select a space'}</span>
+          <span className="nu-channel-list__header-title">{isDirectMessagesView ? 'Chat' : 'Select a space'}</span>
           {isDirectMessagesView && (
             <button
               type="button"
               className="nu-channel-list__header-action"
-              data-nu-role="channel-list-start-dm"
-              title="Start a direct message"
-              aria-label="Start a direct message"
-              onClick={() => setShowStartDm(true)}
+              data-nu-role="chat-saved"
+              title="Saved messages"
+              aria-label="Saved messages"
+              onClick={() => setShowSaved(true)}
             >
-              <Icon name="plus" size={16} />
+              <Icon name="bookmark" size={16} />
             </button>
           )}
         </div>
@@ -800,6 +840,21 @@ export function ChannelList() {
           <p className="nu-channel-list__drag-error" role="alert" data-nu-role="channel-list-drag-error">
             {dragError}
           </p>
+        )}
+        {isDirectMessagesView && (
+          <div className="nu-channel-list__section-header nu-channel-list__section-header--with-action" data-nu-role="chat-dm-header">
+            Direct messages
+            <button
+              type="button"
+              className="nu-channel-list__header-action"
+              data-nu-role="channel-list-start-dm"
+              title="Start a direct message"
+              aria-label="Start a direct message"
+              onClick={() => setShowStartDm(true)}
+            >
+              <Icon name="plus" size={16} />
+            </button>
+          </div>
         )}
         {isDirectMessagesView
           ? directMessages.map((room) => (
@@ -981,6 +1036,7 @@ export function ChannelList() {
             No conversations yet. Use + above to message someone.
           </div>
         )}
+        {isDirectMessagesView && <ChatSpaces onSelect={openSpace} />}
         {!isDirectMessagesView && selectedSpaceId && spaceRooms.length === 0 && (
           <div className="nu-channel-list__empty" data-nu-role="channel-list-empty">
             No channels yet. Use + on the card above to create one.
@@ -995,7 +1051,6 @@ export function ChannelList() {
       <NowPlayingCard />
       <MusicPlayerBar variant="card" />
       <ActiveCallBar />
-      <UserPanel />
       {showCreateChannel && space && (
         <CreateChannelModal
           space={space}
@@ -1022,6 +1077,7 @@ export function ChannelList() {
         />
       )}
       {confirmDialog}
+      {showSaved && <SavedMessagesModal onClose={() => setShowSaved(false)} />}
       {showStartDm && (
         <StartDmModal
           onClose={() => setShowStartDm(false)}
