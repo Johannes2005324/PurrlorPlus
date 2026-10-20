@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import { updateOwnPresence, type UserPresence } from '../../matrix/account';
@@ -51,7 +52,8 @@ export function StatusMenu({
       .catch((err) => setError(err instanceof Error ? err.message : 'Couldn’t change your status'));
   };
 
-  return (
+  // In the page's body, not the rail: the rail's own stacking would put the menu under the channel list.
+  return createPortal(
     <div className="nu-status-menu__menu" data-nu-role="status-menu-menu" role="menu" ref={ref} style={style}>
       <button type="button" role="menuitem" className="nu-status-menu__menu-item" data-nu-role="status-menu-view-profile" onClick={onViewProfile}>
         <Icon name="users" size={14} />
@@ -81,7 +83,8 @@ export function StatusMenu({
         <Icon name="pencil" size={14} />
         <span className="nu-status-menu__menu-label">Edit profile</span>
       </button>
-    </div>
+    </div>,
+    document.body
   );
 }
 
