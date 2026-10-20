@@ -110,10 +110,11 @@ This table grows as new components ship — update it in the same change that ad
 | `data-nu-role="app-shell"` | Root shell grid (`.nu-shell`) |
 | `data-nu-role="server-rail"` | Left server/space icon rail (`.nu-server-rail`) |
 | `data-nu-role="server-rail-home"` | Home (the dashboard), first section tile on the rail |
-| `data-nu-role="server-rail-global-feed"` / `-messages` | The Feed and Messages (DMs and Spaces) section tiles |
+| `data-nu-role="server-rail-global-feed"` / `-chat` | The Feed and Chat section items |
 | `data-nu-role="server-rail-profile"` / `-settings` | Your profile and Account Settings, at the foot of the rail |
-| `data-nu-role="server-rail-list"` | Container for per-Space icons |
-| `data-nu-role="server-rail-item"` | One Space's icon button |
+| `data-nu-role="chat-spaces"` / `chat-space-list` / `chat-space` | Chat's Spaces section, its list, and one Space's row |
+| `data-nu-role="chat-back"` / `chat-saved` | "← Chat" at the top of a Space's channels; the saved-messages button in Chat's header |
+| `data-nu-role="status-menu-menu"` | The menu the rail's Profile button opens (View profile, status, Edit profile) |
 | `data-nu-role="server-rail-add"` | "Create a Space" button, pinned after the space list |
 | `data-nu-role="channel-list"` | Second column, room list (`.nu-channel-list`) |
 | `data-nu-role="channel-list-header"` / `-body` | Channel list header / scrollable body |

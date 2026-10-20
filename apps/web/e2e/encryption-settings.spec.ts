@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { logIn, role, send } from './app';
+import { logIn, role, send, openSpace } from './app';
 import { api, createSpaceWithChannel, createUser, eventually, latestEvents, type TestUser } from './matrix';
 
 const enc = encodeURIComponent;
@@ -30,7 +30,7 @@ test('new private channels are encrypted, public ones aren’t, unless chosen', 
   const alice = await createUser('alice');
   const { spaceId, spaceName } = await createSpaceWithChannel(alice);
   await logIn(page, alice);
-  await page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(page, spaceName);
 
   expect(await createChannel(page, 'secret-plans')).toBe(true);
   expect((await encryption(alice, await roomIdOf(alice, spaceId, 'secret-plans'))).algorithm).toBe('m.megolm.v1.aes-sha2');
@@ -42,7 +42,7 @@ test('new private channels are encrypted, public ones aren’t, unless chosen', 
 test('a new DM is encrypted', async ({ page }) => {
   const [alice, bob] = await Promise.all([createUser('alice'), createUser('bob')]);
   await logIn(page, alice);
-  await role(page, 'server-rail-messages').click();
+  await role(page, 'server-rail-chat').click();
   await role(page, 'channel-list-start-dm').click();
   await role(page, 'start-dm-user-id').fill(bob.userId);
   await role(page, 'start-dm-user-id').press('Enter');
@@ -60,7 +60,7 @@ test('turning on encryption for an existing channel warns first, then encrypts i
   const alice = await createUser('alice');
   const { channelId, spaceName } = await createSpaceWithChannel(alice);
   await logIn(page, alice);
-  await page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(page, spaceName);
   await role(page, 'channel-list-item').filter({ hasText: 'general' }).getByText('general', { exact: true }).click();
 
   const row = page.locator('.nu-channel-list__row').filter({ has: role(page, 'channel-list-item').filter({ hasText: 'general' }) });

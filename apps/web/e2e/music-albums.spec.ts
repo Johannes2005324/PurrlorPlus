@@ -124,7 +124,7 @@ test('a creator sorts tracks into albums; visitors browse them, play on while mo
   await role(page, 'modal-close').click();
 
   // Away from the profile, to the DMs: still playing, with the player in the sidebar.
-  await role(page, 'server-rail-messages').click();
+  await role(page, 'server-rail-chat').click();
   await expect(role(page, 'profile-share')).toHaveCount(0);
   const player = role(page, 'music-player').first();
   await expect(player).toBeVisible();

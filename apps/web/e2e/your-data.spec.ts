@@ -31,7 +31,7 @@ function unzip(bytes: Buffer): Map<string, Buffer> {
 }
 
 async function openYourData(page: Page): Promise<void> {
-  await role(page, 'user-panel-settings').click();
+  await role(page, 'server-rail-settings').click();
   await role(page, 'account-settings-data-tab').click();
   await expect(role(page, 'your-data-settings')).toBeVisible();
 }
@@ -67,7 +67,7 @@ test('Download my data: what you sent, decrypted, with your files, and nobody el
     (evs) => evs.some((e) => e.content.msgtype === 'm.image')
   );
   // A room in no Space is listed with the conversations, outside any Space.
-  await role(page, 'server-rail-messages').click();
+  await role(page, 'server-rail-chat').click();
   await role(page, 'channel-list-item').filter({ hasText: secretRoom }).getByText(secretRoom, { exact: true }).click();
   await send(page, 'only alice can read this');
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSetAtom } from 'jotai';
 import type { Room } from 'matrix-js-sdk';
-import { mobileSpacesOpenAtom } from '../../app/state/mobile';
+import { mobileColumnOpenAtom } from '../../app/state/mobile';
 import {
   railSectionAtom,
   profileUserIdAtom,
@@ -19,7 +19,7 @@ import { InvitesModal } from './InvitesModal';
 /** Goes to what an invite was to, once it's accepted: the Space, the channel in its Space, or the DM. */
 function useOpenAcceptedInvite(): (room: Room) => void {
   const mx = useMatrixClient();
-  const setMobileSpacesOpen = useSetAtom(mobileSpacesOpenAtom);
+  const setMobileColumnOpen = useSetAtom(mobileColumnOpenAtom);
   const setGlobalFeedOpen = useSetAtom(railSectionAtom);
   const setProfileUserId = useSetAtom(profileUserIdAtom);
   const setSpaceView = useSetAtom(selectedSpaceViewAtom);
@@ -27,7 +27,7 @@ function useOpenAcceptedInvite(): (room: Room) => void {
   const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
 
   return (room) => {
-    setMobileSpacesOpen(false);
+    setMobileColumnOpen(false);
     setGlobalFeedOpen('messages');
     setProfileUserId(null);
     setSpaceView(null);

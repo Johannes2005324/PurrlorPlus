@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useState } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { unreadActivityCountAtom } from '../../app/state/feed';
-import type { Room } from 'matrix-js-sdk';
 import {
   openPostAtom,
   profileUserIdAtom,
@@ -15,41 +14,25 @@ import { UnreadBadge } from '../../components/UnreadBadge';
 import { DiscoverModal } from '../discover/DiscoverModal';
 import { useOpenSocial } from '../feed/useOpenSocial';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
-import { useMediaUrl } from '../../matrix/hooks/useMediaUrl';
 import { useInvites } from '../../matrix/hooks/useInvites';
-import { useSpaceRooms } from '../../matrix/hooks/useSpaceRooms';
 import { useSpacelessRooms } from '../../matrix/hooks/useSpacelessRooms';
-import { useSpaces } from '../../matrix/hooks/useSpaces';
-import { useAnyRoomHasUnread, useDirectMessageUnreads, useUnreadSummary } from '../../matrix/hooks/useUnreadCounts';
+import { useDirectMessageUnreads, useUnreadSummary } from '../../matrix/hooks/useUnreadCounts';
 import { describeRoomLevel } from '../../matrix/notificationSettings';
 import { CreateSpaceModal } from './CreateSpaceModal';
-import { locateInList, usePointerDrag } from '../../components/usePointerDrag';
-import { moveSpace } from '../../matrix/spaceOrder';
 import { AccountSettingsModal } from '../../app/AccountSettingsModal';
 import { useOwnProfile } from '../../matrix/hooks/useOwnProfile';
+import { useOwnPresence } from '../../matrix/hooks/useOwnPresence';
+import { StatusMenu } from '../account/StatusMenu';
 import { RailClock } from '../../app/StatusClock';
-import { mobileSpacesOpenAtom } from '../../app/state/mobile';
-import { Avatar, nameHue } from '../../components/Avatar';
+import { mobileColumnOpenAtom } from '../../app/state/mobile';
+import { Avatar } from '../../components/Avatar';
 import { notifyAria } from '../invites/notifyAria';
 import './ServerRail.css';
-
-/** The selected tile's cat ears — drawn on every tile, shown only on the active one (CSS),
- *  so selecting a space animates them in rather than mounting a new element. */
-function CatEars() {
-  return (
-    <svg className="nu-server-rail__ears" viewBox="0 0 48 14" aria-hidden="true" focusable="false">
-      <path className="nu-server-rail__ear" d="M4 14 9.5 1.5 19 14z" />
-      <path className="nu-server-rail__ear-inner" d="M8.5 14 10.3 7.5 14.6 14z" />
-      <path className="nu-server-rail__ear" d="M29 14 38.5 1.5 44 14z" />
-      <path className="nu-server-rail__ear-inner" d="M33.4 14 37.7 7.5 39.5 14z" />
-    </svg>
-  );
-}
 
 /** The rail's line icons, drawn the Ultimit way: square joins, one stroke weight. */
 const RAIL_ICONS = {
   home: 'M3 11l9-7 9 7v9H3zM9 20v-6h6v6',
-  messages: 'M4 4h16v12H9l-5 4zM8 8.5h8M8 12h5',
+  chat: 'M4 4h16v12H9l-5 4zM8 8.5h8M8 12h5',
   settings:
     'M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1',
   feed: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9',
@@ -77,148 +60,21 @@ function Emblem() {
   );
 }
 
-/** A Space's initials for its hexagon: the first letters of its first two words, or its first two letters. */
-export function spaceInitials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return '?';
-  const initials = words.length > 1 ? Array.from(words[0])[0] + Array.from(words[1])[0] : Array.from(words[0]).slice(0, 2).join('');
-  return initials.toUpperCase();
-}
-
-/** A Space's tile can be dragged to another place in the rail (usePointerDrag, matrix/spaceOrder.ts). */
-type TileDrag = { dragging: boolean; clickAllowed: () => boolean; onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void };
-
-function ServerRailItem({ space, active, onSelect, drag }: { space: Room; active: boolean; onSelect: () => void; drag?: TileDrag }) {
-  const src = useMediaUrl(space.getMxcAvatarUrl(), { width: 96, height: 96, method: 'crop' });
-  const mx = useMatrixClient();
-  const rooms = useSpaceRooms(space.roomId);
-  const unread = useUnreadSummary(rooms);
-  // Something new the counts don't cover (a webhook's post, a message under "Only @mentions").
-  const hasNew = useAnyRoomHasUnread(rooms, mx.getUserId() ?? '', (roomId) => describeRoomLevel(mx, roomId).effective === 'nothing');
-
-  const className = [
-    'nu-server-rail__item',
-    active && 'nu-server-rail__item--active',
-    (unread.total > 0 || hasNew) && 'nu-server-rail__item--unread',
-    drag && 'nu-server-rail__item--draggable',
-    drag?.dragging && 'nu-server-rail__item--dragging',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  return (
-    <button
-      type="button"
-      className={className}
-      data-nu-role="server-rail-item"
-      title={space.name}
-      aria-label={space.name}
-      aria-current={active ? 'page' : undefined}
-      data-nu-drag-space={space.roomId}
-      onPointerDown={drag?.onPointerDown}
-      onClick={() => {
-        if (!drag || drag.clickAllowed()) onSelect();
-      }}
-    >
-      <span className="nu-server-rail__icon">
-        <CatEars />
-        {/* A hexagon: its picture, or its initials on a color picked from its name. */}
-        <span className="nu-server-rail__hex" style={{ ['--nu-hex-hue' as string]: nameHue(space.name || '?') }}>
-          {src ? <img className="nu-server-rail__item-image" src={src} alt="" /> : spaceInitials(space.name || '?')}
-        </span>
-        <span className="nu-server-rail__item-badge">
-          <UnreadBadge total={unread.total} highlight={unread.highlight} />
-        </span>
-      </span>
-      <span className="nu-server-rail__label" aria-hidden="true">
-        {space.name}
-      </span>
-    </button>
-  );
-}
-
-/** How many unread DMs get their own tile under Messages; the rest are in Messages' count. */
-const MAX_DM_TILES = 3;
-
-/** An unread DM in the rail, under Messages: who it's with, and how many messages, one click away. */
-function DirectMessageRailItem({ room, count, onSelect }: { room: Room; count: number; onSelect: () => void }) {
-  const mxc = room.getMxcAvatarUrl() ?? room.getAvatarFallbackMember()?.getMxcAvatarUrl() ?? null;
-  const src = useMediaUrl(mxc, { width: 96, height: 96, method: 'crop' });
-  const label = `${room.name}, ${count === 1 ? '1 unread message' : `${count > 99 ? '99+' : count} unread messages`}`;
-  return (
-    <button
-      type="button"
-      className="nu-server-rail__item nu-server-rail__item--dm nu-server-rail__item--unread"
-      data-nu-role="server-rail-dm"
-      title={label}
-      aria-label={label}
-      onClick={onSelect}
-    >
-      <span className="nu-server-rail__icon">
-        <span className="nu-server-rail__person" style={{ ['--nu-hex-hue' as string]: nameHue(room.name || '?') }}>
-          {src ? <img className="nu-server-rail__item-image" src={src} alt="" /> : (room.name || '?').slice(0, 1).toUpperCase()}
-        </span>
-        <span className="nu-server-rail__item-badge">
-          <UnreadBadge total={count} highlight={count} />
-        </span>
-      </span>
-      <span className="nu-server-rail__label" aria-hidden="true">
-        {room.name}
-      </span>
-    </button>
-  );
-}
-
-/** The app's main navigation: Home, Feed and Messages, then one icon per joined Matrix Space (a Discord "server"), then Notifications, Discover and Create, with your profile and settings at the foot. */
+/** The app's main navigation: Home, Feed and Chat (Direct messages and Spaces live in its column), then Notifications, Discover and Create, with your profile and settings at the foot. */
 export function ServerRail() {
   const mx = useMatrixClient();
-  const storedSpaces = useSpaces();
-  // Dragging a Space to another place (matrix/spaceOrder.ts): shown at once, saved behind it.
-  const [pendingOrder, setPendingOrder] = useState<string[] | null>(null);
-  const storedIds = storedSpaces.map((space) => space.roomId).join('\n');
-  useEffect(() => {
-    if (!pendingOrder) return undefined;
-    if (pendingOrder.join('\n') === storedIds) {
-      setPendingOrder(null);
-      return undefined;
-    }
-    const timer = setTimeout(() => setPendingOrder(null), 20_000);
-    return () => clearTimeout(timer);
-  }, [pendingOrder, storedIds]);
-  const spaces = pendingOrder
-    ? [
-        ...pendingOrder.flatMap((id) => storedSpaces.filter((space) => space.roomId === id)),
-        ...storedSpaces.filter((space) => !pendingOrder.includes(space.roomId)),
-      ]
-    : storedSpaces;
-  const listRef = useRef<HTMLDivElement>(null);
-  const spaceDrag = usePointerDrag<{ id: string; label: string }, number>({
-    containerRef: listRef,
-    enabled: true,
-    locate: (item, clientY, container) => locateInList(container, 'data-nu-drag-space', item.id, clientY),
-    drop: (item, index) => {
-      const from = spaces.findIndex((space) => space.roomId === item.id);
-      const ids = spaces.map((space) => space.roomId).filter((id) => id !== item.id);
-      const at = Math.max(0, Math.min(from < index ? index - 1 : index, ids.length));
-      const next = [...ids.slice(0, at), item.id, ...ids.slice(at)];
-      if (next.join('\n') === spaces.map((space) => space.roomId).join('\n')) return;
-      const before = spaces;
-      setPendingOrder(next);
-      moveSpace(mx, before, item.id, index).catch((err: unknown) => {
-        console.error('Moving a Space failed', err);
-        setPendingOrder(null);
-      });
-    },
-  });
   const invites = useInvites();
-  const [selectedSpaceId, setSelectedSpaceId] = useAtom(selectedSpaceIdAtom);
-  const [, setSelectedRoomId] = useAtom(selectedRoomIdAtom);
+  const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
+  const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
   const [section, setSection] = useAtom(railSectionAtom);
   const globalFeedOpen = section === 'feed';
   const setOpenPost = useSetAtom(openPostAtom);
   const [profileUserId, setProfileUserId] = useAtom(profileUserIdAtom);
   const me = useOwnProfile();
   const [showSettings, setShowSettings] = useState(false);
+  const ownPresence = useOwnPresence();
+  // Profile opens a small menu (View profile, your status, Edit profile) beside the rail.
+  const [statusMenuAt, setStatusMenuAt] = useState<{ left: number; bottom: number } | null>(null);
   const socialView = useAtomValue(socialViewAtom);
   const unreadNotifications = useAtomValue(unreadActivityCountAtom);
   const openSocial = useOpenSocial();
@@ -234,14 +90,13 @@ export function ServerRail() {
   // DMs set to "Only @mentions" or muted keep to the server's counts above.
   const dmCounts = useDirectMessageUnreads(spacelessRooms, mx.getUserId() ?? '', (roomId) => describeRoomLevel(mx, roomId).effective !== 'all');
   const dmCountTotal = [...dmCounts.values()].reduce((sum, n) => sum + n, 0) + dmUnread.highlight;
-  const unreadDms = spacelessRooms.filter((room) => dmCounts.has(room.roomId)).slice(0, MAX_DM_TILES);
 
   // A Space opens fresh, with nothing chosen in it: ChannelList then lands on its unseen news or its
   // first text channel (matrix/spaceNews.ts), rather than whatever view the last Space was on.
   // On a phone the rail is the Spaces screen (MobileTabBar.tsx): going anywhere from it closes it.
-  const setMobileSpacesOpen = useSetAtom(mobileSpacesOpenAtom);
+  const setMobileColumnOpen = useSetAtom(mobileColumnOpenAtom);
   const selectSpace = (id: string | null) => {
-    setMobileSpacesOpen(false);
+    setMobileColumnOpen(false);
     setSection('messages');
     setProfileUserId(null);
     setSelectedSpaceId(id);
@@ -249,36 +104,27 @@ export function ServerRail() {
     setSpaceView(null);
   };
 
-  const openDirectMessage = (roomId: string) => {
-    setMobileSpacesOpen(false);
-    setSection('messages');
-    setProfileUserId(null);
-    setSpaceView(null);
-    setSelectedSpaceId(null);
-    setSelectedRoomId(roomId);
-  };
-
-  // Home is a page of its own, and Messages comes back to where you left it (the Space and room are
-  // still in their atoms); clicking Messages while already there opens the Direct Messages list.
+  // Home is a page of its own, and Chat comes back to where you left it (the Space and room are
+  // still in their atoms); clicking Chat while already there goes to its top level (Direct messages and Spaces).
   const goHome = () => {
-    setMobileSpacesOpen(false);
+    setMobileColumnOpen(false);
     setOpenPost(null);
     setProfileUserId(null);
     setSection('home');
   };
-  const goMessages = () => {
+  const goChat = () => {
     if (section === 'messages') {
       selectSpace(null);
       return;
     }
-    setMobileSpacesOpen(false);
+    setMobileColumnOpen(false);
     setOpenPost(null);
     setProfileUserId(null);
     setSection('messages');
   };
   // Your profile sits on the social side, like everyone's (as MobileTabBar's You tab does).
   const openOwnProfile = () => {
-    setMobileSpacesOpen(false);
+    setMobileColumnOpen(false);
     setOpenPost(null);
     setSection('feed');
     setProfileUserId(me.userId);
@@ -326,69 +172,35 @@ export function ServerRail() {
           Feed
         </span>
       </button>
-      {/* Messages: Direct Messages, and the Spaces below. */}
+      {/* Chat: Direct messages and Spaces, in the channel column. */}
       <button
         type="button"
         className={
           [
             'nu-server-rail__item',
-            'nu-server-rail__item--messages',
+            'nu-server-rail__item--chat',
             section === 'messages' && 'nu-server-rail__item--active',
             (dmCountTotal > 0 || dmUnread.total > 0) && 'nu-server-rail__item--unread',
           ]
             .filter(Boolean)
             .join(' ')
         }
-        data-nu-role="server-rail-messages"
-        title="Messages"
-        aria-label={dmCountTotal > 0 ? `Messages, ${dmCountTotal} unread` : 'Messages'}
+        data-nu-role="server-rail-chat"
+        title="Chat"
+        aria-label={dmCountTotal > 0 ? `Chat, ${dmCountTotal} unread` : 'Chat'}
         aria-current={section === 'messages' ? 'page' : undefined}
-        onClick={goMessages}
+        onClick={goChat}
       >
         <span className="nu-server-rail__icon">
-          <RailIcon name="messages" />
+          <RailIcon name="chat" />
           <span className="nu-server-rail__item-badge">
             <UnreadBadge total={dmCountTotal || dmUnread.total} highlight={dmCountTotal} />
           </span>
         </span>
         <span className="nu-server-rail__label" aria-hidden="true">
-          Messages
+          Chat
         </span>
       </button>
-      {unreadDms.map((room) => (
-        <DirectMessageRailItem
-          key={room.roomId}
-          room={room}
-          count={dmCounts.get(room.roomId) ?? 0}
-          onSelect={() => openDirectMessage(room.roomId)}
-        />
-      ))}
-      <div className="nu-server-rail__divider" />
-      <div
-        className={spaceDrag.dragging ? 'nu-server-rail__list nu-server-rail__list--dragging' : 'nu-server-rail__list'}
-        data-nu-role="server-rail-list"
-        ref={listRef}
-      >
-        {spaceDrag.lineTop !== null && <div className="nu-server-rail__drop-line" style={{ top: spaceDrag.lineTop }} aria-hidden="true" />}
-        {spaces.map((space) => (
-          <ServerRailItem
-            key={space.roomId}
-            drag={{
-              dragging: spaceDrag.dragging?.id === space.roomId,
-              clickAllowed: spaceDrag.clickAllowed,
-              onPointerDown: (event) => spaceDrag.start({ id: space.roomId, label: space.name }, event),
-            }}
-            space={space}
-            active={selectedSpaceId === space.roomId && section === 'messages'}
-            onSelect={() => selectSpace(space.roomId)}
-          />
-        ))}
-      </div>
-      {spaceDrag.dragging && spaceDrag.pointer && (
-        <div className="nu-server-rail__drag-label" style={{ left: spaceDrag.pointer.x + 14, top: spaceDrag.pointer.y + 14 }} aria-hidden="true">
-          {spaceDrag.dragging.label}
-        </div>
-      )}
       <div className="nu-server-rail__divider" />
       {/* Everything that's about you, in one place: mentions anywhere, and what people did with
           your posts and profile (the social side's Notifications page). */}
@@ -451,18 +263,44 @@ export function ServerRail() {
         type="button"
         className={onOwnProfile ? 'nu-server-rail__item nu-server-rail__item--profile nu-server-rail__item--active' : 'nu-server-rail__item nu-server-rail__item--profile'}
         data-nu-role="server-rail-profile"
-        title="Your profile"
-        aria-label="Your profile"
+        title="Your profile and status"
+        aria-label="Your profile and status"
+        aria-haspopup="menu"
+        aria-expanded={statusMenuAt !== null}
         aria-current={onOwnProfile ? 'page' : undefined}
-        onClick={openOwnProfile}
+        // So the menu's own outside-click handler doesn't close it just before this click reopens it.
+        onPointerDown={(event) => event.nativeEvent.stopPropagation()}
+        onClick={(event) => {
+          if (statusMenuAt) {
+            setStatusMenuAt(null);
+            return;
+          }
+          const rect = event.currentTarget.getBoundingClientRect();
+          setStatusMenuAt({ left: rect.right + 8, bottom: Math.max(8, window.innerHeight - rect.bottom) });
+        }}
       >
         <span className="nu-server-rail__icon">
-          <Avatar name={me.displayName} mxcUrl={me.avatarUrl} size={28} />
+          <Avatar name={me.displayName} mxcUrl={me.avatarUrl} size={28} presence={ownPresence.presence ?? 'offline'} />
         </span>
         <span className="nu-server-rail__label" aria-hidden="true">
           Profile
         </span>
       </button>
+      {statusMenuAt && (
+        <StatusMenu
+          current={ownPresence.presence}
+          style={{ left: statusMenuAt.left, bottom: statusMenuAt.bottom }}
+          onClose={() => setStatusMenuAt(null)}
+          onViewProfile={() => {
+            setStatusMenuAt(null);
+            openOwnProfile();
+          }}
+          onEditProfile={() => {
+            setStatusMenuAt(null);
+            setShowSettings(true);
+          }}
+        />
+      )}
       <button
         type="button"
         className="nu-server-rail__item nu-server-rail__item--settings"

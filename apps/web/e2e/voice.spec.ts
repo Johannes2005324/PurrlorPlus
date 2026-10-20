@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { logIn, role } from './app';
+import { logIn, role, openSpace } from './app';
 import { api, createSpaceWithChannel, createUser, eventually, type TestUser } from './matrix';
 
 /**
@@ -80,7 +80,7 @@ async function joinCall(browser: Browser, user: TestUser, spaceName: string): Pr
   const context = await browser.newContext({ permissions: ['microphone', 'camera'] });
   const page = await context.newPage();
   await logIn(page, user);
-  await page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(page, spaceName);
   await role(page, 'channel-list-item').filter({ hasText: 'lounge' }).getByText('lounge', { exact: true }).click();
   await expect(role(page, 'voice-controls')).toBeVisible({ timeout: 45_000 });
   return page;
@@ -116,7 +116,7 @@ test('in a call, who is talking is lit up, and the list keeps its order', async 
   // same order there too.
   const davePage = await (await browser.newContext()).newPage();
   await logIn(davePage, dave);
-  await davePage.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(davePage, spaceName);
   await expect(role(davePage, 'channel-list-occupants').locator('.nu-channel-list__occupant-name')).toHaveText(joinOrder, { timeout: 30_000 });
 
   // And it stays put: no reshuffling as the call goes on.

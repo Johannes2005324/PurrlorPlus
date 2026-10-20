@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useStore, type Atom, type ExtractAtomValue } from 'jotai';
-import { mobileMemberListOpenAtom, mobileSpacesOpenAtom } from './state/mobile';
+import { mobileMemberListOpenAtom, mobileColumnOpenAtom } from './state/mobile';
 import {
   openPostAtom,
   profileUserIdAtom,
@@ -37,7 +37,7 @@ const VIEW_ATOMS = {
   socialSpaceId: socialSpaceIdAtom,
   profileUserId: profileUserIdAtom,
   openPost: openPostAtom,
-  mobileSpaces: mobileSpacesOpenAtom,
+  mobileColumn: mobileColumnOpenAtom,
   mobileMembers: mobileMemberListOpenAtom,
 } as const;
 

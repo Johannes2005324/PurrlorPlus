@@ -31,5 +31,7 @@ test('Discover lists public Spaces, not their channels, and joins one', async ({
 
   await role(rows.first(), 'discover-join').click();
   await expect(role(page, 'discover-list')).toBeHidden();
-  await expect(page.locator(`[data-nu-role="server-rail-item"][aria-label="${name}"]`)).toBeVisible();
+  // Joining a Space opens it: Chat's column shows its channels, with a way back.
+  await expect(role(page, 'chat-back')).toBeVisible();
+  await expect(page.locator('.nu-channel-list').getByText(name).first()).toBeVisible();
 });

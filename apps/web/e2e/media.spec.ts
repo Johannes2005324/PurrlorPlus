@@ -105,6 +105,7 @@ test('an image shown once is kept on the device, and signing out deletes it', as
   const cached = () => page.evaluate(async (url) => !!(await (await caches.open('purrlor-media-v1')).match(url!)), src);
   await expect.poll(cached).toBe(true);
 
+  await role(page, 'server-rail-settings').click();
   await role(page, 'user-panel-logout').click();
   await expect(role(page, 'login-screen')).toBeVisible();
   expect(await page.evaluate(() => caches.has('purrlor-media-v1'))).toBe(false);

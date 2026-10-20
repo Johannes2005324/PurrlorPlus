@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { logIn, role } from './app';
+import { logIn, openChat, role, openSpace } from './app';
 import { api, createSpaceWithChannel, createUser, eventually, type TestUser } from './matrix';
 
 /**
@@ -59,7 +59,7 @@ test('the Space’s admin drags channels and categories into place, and it’s s
   });
 
   await logIn(page, owner);
-  await page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(page, spaceName);
   await expect.poll(() => listed(page)).toEqual(['general', 'rules', 'TEXT', 'art', 'HANGOUT', 'lounge']);
 
   // Reorder the uncategorized channels.
@@ -100,7 +100,7 @@ test('the Space’s admin drags channels and categories into place, and it’s s
   // Someone who can't change the Space's channels can't drag them.
   const memberPage = await (await page.context().browser()!.newContext()).newPage();
   await logIn(memberPage, member);
-  await memberPage.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(memberPage, spaceName);
   await expect.poll(() => listed(memberPage)).toEqual(['lounge', 'rules', 'HANGOUT', 'TEXT', 'art', 'general']);
   await expect(memberPage.locator('[data-nu-drag-channel]')).toHaveCount(0);
 });
@@ -116,7 +116,7 @@ test('on a touch screen, a long press drags a channel and a swipe still scrolls'
   const context = await browser.newContext({ hasTouch: true });
   const page = await context.newPage();
   await logIn(page, owner);
-  await page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(page, spaceName);
   await expect.poll(() => listed(page)).toEqual(['general', 'rules', 'art']);
 
   const cdp = await context.newCDPSession(page);
@@ -159,11 +159,12 @@ test('Spaces are dragged into your own order in the rail, which is saved for you
     made.push(roomId);
   }
   await logIn(page, me);
+  await openChat(page);
   const tiles = () =>
-    page.locator('[data-nu-role="server-rail-list"] [data-nu-role="server-rail-item"]').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')!.split(' ')[0]));
+    page.locator('[data-nu-role="chat-space-list"] [data-nu-role="chat-space"]').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')!.split(' ')[0]));
   await expect.poll(tiles).toEqual(['Alpha', 'Beta', 'Gamma']);
 
-  const tile = (name: string) => page.locator(`[data-nu-role="server-rail-item"][aria-label^="${name} "]`);
+  const tile = (name: string) => page.locator(`[data-nu-role="chat-space"][aria-label^="${name} "]`);
   await dragTo(page, tile('Gamma'), tile('Alpha'), 'above');
   await expect.poll(tiles).toEqual(['Gamma', 'Alpha', 'Beta']);
   await dragTo(page, tile('Alpha'), tile('Beta'), 'below');
@@ -177,9 +178,11 @@ test('Spaces are dragged into your own order in the rail, which is saved for you
     ([alpha, beta, gamma]) => !!alpha && !!beta && !!gamma && gamma < beta && beta < alpha
   );
   await page.reload();
+  await openChat(page);
   await expect.poll(tiles).toEqual(['Gamma', 'Beta', 'Alpha']);
 
   // A click still opens the Space.
   await tile('Beta').click();
-  await expect(tile('Beta')).toHaveAttribute('aria-current', 'page');
+  await expect(role(page, 'chat-back')).toBeVisible();
+  await expect(page.locator('.nu-channel-list').getByText('Beta').first()).toBeVisible();
 });

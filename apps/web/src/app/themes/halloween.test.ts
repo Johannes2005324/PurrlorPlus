@@ -9,7 +9,7 @@ describe('the Halloween preset', () => {
 
   it('draws only well-formed SVGs (a broken one would just show nothing)', () => {
     const uris = [...HALLOWEEN_CSS.matchAll(/url\("data:image\/svg\+xml,([^"]+)"\)/g)].map((m) => decodeURIComponent(m[1]));
-    expect(uris.length).toBe(7);
+    expect(uris.length).toBe(6);
     for (const source of uris) {
       const doc = new DOMParser().parseFromString(source, 'image/svg+xml');
       expect(doc.getElementsByTagName('parsererror')).toHaveLength(0);

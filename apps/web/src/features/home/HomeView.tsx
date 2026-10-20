@@ -1,6 +1,6 @@
 import { useSetAtom } from 'jotai';
 import { NotificationCountType, type Room } from 'matrix-js-sdk';
-import { mobileSpacesOpenAtom } from '../../app/state/mobile';
+import { mobileColumnOpenAtom } from '../../app/state/mobile';
 import {
   profileUserIdAtom,
   railSectionAtom,
@@ -131,11 +131,11 @@ function UnreadMessages({ unread }: { unread: UnreadRoom[] }) {
   const setSpaceView = useSetAtom(selectedSpaceViewAtom);
   const setProfileUserId = useSetAtom(profileUserIdAtom);
   const setSection = useSetAtom(railSectionAtom);
-  const setMobileSpacesOpen = useSetAtom(mobileSpacesOpenAtom);
+  const setMobileColumnOpen = useSetAtom(mobileColumnOpenAtom);
   if (unread.length === 0) return null;
 
   const open = (room: Room) => {
-    setMobileSpacesOpen(false);
+    setMobileColumnOpen(false);
     setProfileUserId(null);
     setSpaceView(null);
     setSpaceId(findParentSpaceId(mx, room.roomId));

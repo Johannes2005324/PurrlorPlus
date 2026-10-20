@@ -10,7 +10,7 @@ const HOME: View = {
   socialSpaceId: null,
   profileUserId: null,
   openPost: null,
-  mobileSpaces: false,
+  mobileColumn: false,
   mobileMembers: false,
 };
 

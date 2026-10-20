@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { logIn, role } from './app';
+import { logIn, role, openSpace } from './app';
 import { api, createSpaceWithChannel, createUser, eventually } from './matrix';
 
 type Rules = { global: { override?: { rule_id: string }[]; room?: { rule_id: string }[] } };
@@ -13,7 +13,7 @@ test('channel and Space notification levels become push rules', async ({ page })
   const rules = () => api<Rules>(alice, 'GET', '/pushrules/');
 
   await logIn(page, alice);
-  await page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(page, spaceName);
 
   // The whole Space to "Only @mentions": a room rule on its channel.
   await role(page, 'space-notification-menu').click();
@@ -47,7 +47,7 @@ test('a keyword becomes a content push rule, and removing it deletes the rule', 
   const hasKeyword = (r: ContentRules) => (r.global.content ?? []).some((rule) => rule.rule_id === 'movie night' && rule.pattern === 'movie night');
 
   await logIn(page, alice);
-  await role(page, 'user-panel-settings').click();
+  await role(page, 'server-rail-settings').click();
   await role(page, 'keyword-input').fill('movie night');
   await role(page, 'keyword-add').click();
   await expect(role(page, 'keyword').filter({ hasText: 'movie night' })).toBeVisible();

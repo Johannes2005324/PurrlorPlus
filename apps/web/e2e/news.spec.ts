@@ -1,13 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
-import { logIn, role } from './app';
+import { logIn, role, openSpace } from './app';
 import { api, createSpaceWithChannel, createUser, eventually } from './matrix';
 
 const enc = encodeURIComponent;
 
 /** Leaves the Space and opens it again from the rail, the way someone coming back to it would. */
 async function reopenSpace(page: Page, spaceName: string): Promise<void> {
-  await role(page, 'server-rail-messages').click();
-  await page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await role(page, 'server-rail-chat').click();
+  await openSpace(page, spaceName);
 }
 
 test('a Space’s news shows on the first visit, then the Space opens on its first channel, until the news is announced again', async ({
@@ -21,7 +21,7 @@ test('a Space’s news shows on the first visit, then the Space opens on its fir
   // writes the news.
   const alicePage = await (await browser.newContext()).newPage();
   await logIn(alicePage, alice);
-  await alicePage.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(alicePage, spaceName);
   await expect(role(alicePage, 'composer-input')).toBeVisible();
   await role(alicePage, 'channel-list-news').click();
   await role(alicePage, 'news-edit').click();
@@ -33,7 +33,7 @@ test('a Space’s news shows on the first visit, then the Space opens on its fir
   // Bob's first visit: the news, which he can't edit, and on to the channel.
   const bobPage = await (await browser.newContext()).newPage();
   await logIn(bobPage, bob);
-  await bobPage.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(bobPage, spaceName);
   await expect(role(bobPage, 'news-body')).toHaveText('Welcome! Movie night is on Friday.');
   await expect(role(bobPage, 'news-edit')).toHaveCount(0);
   await role(bobPage, 'news-continue').click();
@@ -77,7 +77,7 @@ test('who may edit the news is a role setting, and the homeserver holds to it', 
 
   // Alice lets everyone edit the news in Space Settings → Roles.
   await logIn(page, alice);
-  await page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(page, spaceName);
   await page.locator('[aria-label="Space settings"]').first().click();
   await role(page, 'space-settings-roles-tab').click();
   await role(page, 'space-roles-capability-news').selectOption({ label: 'Everyone' });
@@ -100,7 +100,7 @@ test('each Space opens on its own first channel when switching between them on t
     [second, 'hangout'],
     [first, 'lobby'],
   ] as const) {
-    await page.locator(`[data-nu-role="server-rail-item"][aria-label="${space.spaceName}"]`).click();
+    await openSpace(page, space.spaceName);
     await expect(header).toHaveText(channel);
   }
 });

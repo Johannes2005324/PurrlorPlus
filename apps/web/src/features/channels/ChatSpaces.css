@@ -1,0 +1,97 @@
+/* The Spaces section of the Chat column (ChatSpaces.tsx). */
+.nu-chat-spaces__list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nu-chat-spaces__row {
+  display: flex;
+  align-items: center;
+  gap: var(--nu-space-2);
+  width: 100%;
+  padding: var(--nu-space-1) var(--nu-space-2);
+  border: none;
+  border-radius: var(--nu-radius-md);
+  background: transparent;
+  color: var(--nu-color-text-secondary, var(--nu-color-text-primary));
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.nu-chat-spaces__row:hover {
+  background: var(--nu-color-hover);
+}
+
+.nu-chat-spaces__row--active,
+.nu-chat-spaces__row--active:hover {
+  background: var(--nu-color-active, var(--nu-color-hover));
+  color: var(--nu-color-text-primary);
+}
+
+.nu-chat-spaces__row--unread .nu-chat-spaces__name {
+  font-weight: 700;
+  color: var(--nu-color-text-primary);
+}
+
+.nu-chat-spaces__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nu-chat-spaces__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--nu-color-accent);
+}
+
+.nu-chat-spaces__list--dragging {
+  cursor: grabbing;
+}
+
+.nu-chat-spaces__list--dragging .nu-chat-spaces__row {
+  pointer-events: none;
+}
+
+.nu-chat-spaces__row--dragging {
+  opacity: 0.35;
+}
+
+.nu-chat-spaces__drop-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  margin-top: -1.5px;
+  background: var(--nu-color-accent);
+  box-shadow: 0 0 6px var(--nu-color-accent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.nu-chat-spaces__drag-label {
+  position: fixed;
+  z-index: 1000;
+  max-width: 14rem;
+  padding: var(--nu-space-1) var(--nu-space-2);
+  border-radius: var(--nu-radius-md);
+  background: var(--nu-color-bg-elevated);
+  color: var(--nu-color-text-primary);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  font-size: var(--nu-font-size-sm);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}

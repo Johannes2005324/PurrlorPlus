@@ -5,7 +5,7 @@ import { createSpaceWithChannel, createUser } from './matrix';
 /**
  * The phone layout's bottom tab bar (features/servers/MobileTabBar.tsx), which stands in for the
  * server rail there: You reaches your own profile, which a phone had no way to before, and Spaces
- * lists every Space and opens one.
+ * opens Chat (DMs and Spaces).
  */
 
 test.use({ viewport: { width: 390, height: 844 } });
@@ -21,8 +21,8 @@ test('on a phone, the tab bar reaches your profile and your Spaces', async ({ pa
   await expect(role(page, 'profile-share')).toBeVisible();
   await expect(role(page, 'mobile-tab-you')).toHaveAttribute('aria-current', 'page');
 
-  await role(page, 'mobile-tab-spaces').click();
-  const tile = page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`);
+  await role(page, 'mobile-tab-chat').click();
+  const tile = page.locator(`[data-nu-role="chat-space"][aria-label="${spaceName}"]`);
   await expect(tile).toBeVisible();
   await tile.click();
   await expect(role(page, 'server-rail')).toBeHidden();

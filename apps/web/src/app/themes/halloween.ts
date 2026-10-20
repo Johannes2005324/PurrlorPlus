@@ -55,8 +55,6 @@ const bat = (x: number, y: number, scale: number, begin: string) => `
     <path d='M-2 1.5-2.2-1.5-.8.4h1.6l1.4-1.9L2 1.5 0 4z'/>
   </g>`;
 
-const PERCHED_CAT = svg('0 0 56 44', SITTING_CAT);
-
 const MOON_SCENE = svg(
   '0 0 100 100',
   `<defs><radialGradient id='moon' cx='0.42' cy='0.38'><stop offset='0' stop-color='#ffe6b0'/><stop offset='1' stop-color='#f59a3c'/></radialGradient></defs>
@@ -179,19 +177,6 @@ export const HALLOWEEN_CSS = `/* Halloween: a black cat's night out. Creepster f
 /* Eyes watching from the dark at the bottom of the rail; Spaces scroll over them. */
 [data-nu-role="server-rail-list"] {
   background: ${EYES_IN_THE_DARK} center bottom 10px / 36px no-repeat;
-}
-
-/* A black cat sits on the user panel, tail swishing. */
-[data-nu-role="user-panel"]::before {
-  content: '';
-  position: absolute;
-  right: 14px;
-  bottom: calc(100% - 2px);
-  width: 46px;
-  height: 36px;
-  background: ${PERCHED_CAT} center bottom / contain no-repeat;
-  filter: drop-shadow(0 0 3px rgba(255, 117, 24, 0.55));
-  pointer-events: none;
 }
 
 /* A Space without a picture of its own gets a dusk sky with the moon up, in place of its colors. */

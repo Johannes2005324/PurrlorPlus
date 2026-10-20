@@ -1,6 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { unreadActivityCountAtom } from '../../app/state/feed';
-import { mobileSpacesOpenAtom } from '../../app/state/mobile';
+import { mobileColumnOpenAtom } from '../../app/state/mobile';
 import {
   globalFeedOpenAtom,
   openPostAtom,
@@ -41,15 +41,14 @@ function Count({ n }: { n: number }) {
 
 /**
  * The phone layout's way around, from the Ultimit mockup's phone screen: a bar along the bottom
- * with Home (the dashboard), Messages (your DMs and every Space, as a grid: the server rail laid
- * out flat), Feed, Notify and You (your own profile). It stands in for the server rail, which on a phone took a
+ * with Home (the dashboard), Chat (your DMs and Spaces: the channel list), Feed, Notify and You (your own profile). It stands in for the server rail, which on a phone took a
  * strip off every screen and had no way to your own profile at all. Only below the responsive
  * breakpoint (styles/base/frame.css); hidden while the keyboard is up.
  */
 export function MobileTabBar() {
   const mx = useMatrixClient();
   const me = useOwnProfile();
-  const [spacesOpen, setSpacesOpen] = useAtom(mobileSpacesOpenAtom);
+  const setColumnOpen = useSetAtom(mobileColumnOpenAtom);
   const globalFeedOpen = useAtomValue(globalFeedOpenAtom);
   const socialView = useAtomValue(socialViewAtom);
   const [profileUserId, setProfileUserId] = useAtom(profileUserIdAtom);
@@ -59,17 +58,17 @@ export function MobileTabBar() {
   const openSocial = useOpenSocial();
   const unreadNotifications = useAtomValue(unreadActivityCountAtom);
   const invites = useInvites();
-  // Messages' count, worked out as the rail's Messages tile does (ServerRail.tsx).
+  // Chat's count, worked out as the rail's Chat item does (ServerRail.tsx).
   const spacelessRooms = useSpacelessRooms();
   const dmUnread = useUnreadSummary(spacelessRooms);
   const dmCounts = useDirectMessageUnreads(spacelessRooms, mx.getUserId() ?? '', (roomId) => describeRoomLevel(mx, roomId).effective !== 'all');
   const dmCount = [...dmCounts.values()].reduce((sum, n) => sum + n, 0) + dmUnread.highlight;
 
   const onProfile = !!profileUserId && profileUserId === me.userId;
-  const onNotify = !spacesOpen && globalFeedOpen && socialView === 'notifications' && !profileUserId;
-  const onFeed = !spacesOpen && globalFeedOpen && !onNotify && !profileUserId;
-  const onHome = !spacesOpen && section === 'home' && !profileUserId;
-  const onMessages = spacesOpen || (section === 'messages' && !profileUserId);
+  const onNotify = globalFeedOpen && socialView === 'notifications' && !profileUserId;
+  const onFeed = globalFeedOpen && !onNotify && !profileUserId;
+  const onHome = section === 'home' && !profileUserId;
+  const onChat = section === 'messages' && !profileUserId;
 
   const tabs = [
     {
@@ -80,20 +79,26 @@ export function MobileTabBar() {
       icon: <Glyph name="home" />,
       count: 0,
       go: () => {
-        setSpacesOpen(false);
+        setColumnOpen(false);
         setProfileUserId(null);
         setOpenPost(null);
         setSection('home');
       },
     },
     {
-      key: 'spaces',
-      label: 'Messages',
-      aria: dmCount > 0 ? `Messages, ${dmCount} unread` : 'Messages',
-      active: onMessages,
+      key: 'chat',
+      label: 'Chat',
+      aria: dmCount > 0 ? `Chat, ${dmCount} unread` : 'Chat',
+      active: onChat,
       icon: <Glyph name="spaces" />,
       count: dmCount,
-      go: () => setSpacesOpen(true),
+      // The Chat column: the top level, or the Space you were in, even with a room open beside it.
+      go: () => {
+        setOpenPost(null);
+        setProfileUserId(null);
+        setSection('messages');
+        setColumnOpen(true);
+      },
     },
     {
       key: 'feed',
@@ -103,7 +108,7 @@ export function MobileTabBar() {
       icon: <Glyph name="feed" />,
       count: 0,
       go: () => {
-        setSpacesOpen(false);
+        setColumnOpen(false);
         openSocial(socialView === 'notifications' ? 'everyone' : socialView);
       },
     },
@@ -115,7 +120,7 @@ export function MobileTabBar() {
       icon: <Glyph name="notify" />,
       count: unreadNotifications + invites.length,
       go: () => {
-        setSpacesOpen(false);
+        setColumnOpen(false);
         openSocial('notifications');
       },
     },
@@ -132,7 +137,7 @@ export function MobileTabBar() {
       count: 0,
       go: () => {
         // Your profile sits on the social side, like everyone's: Back from it goes to the feed.
-        setSpacesOpen(false);
+        setColumnOpen(false);
         setOpenPost(null);
         setGlobalFeedOpen(true);
         setProfileUserId(me.userId);

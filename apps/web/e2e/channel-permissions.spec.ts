@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { logIn, message, openChannel, role, send } from './app';
+import { logIn, message, openChannel, role, send, openSpace } from './app';
 import { api, createSpaceWithChannel, createUser, eventually, sendText, type TestUser } from './matrix';
 
 const enc = encodeURIComponent;
@@ -53,7 +53,7 @@ test('an announcement channel: only moderators post, everyone reacts', async ({ 
 
   const bobPage = await (await browser.newContext()).newPage();
   await logIn(bobPage, bob);
-  await bobPage.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(bobPage, spaceName);
   await role(bobPage, 'channel-list-item').filter({ hasText: 'general' }).getByText('general', { exact: true }).click();
   await expect(role(bobPage, 'composer-locked')).toContainText('Only moderators can post');
 
@@ -108,7 +108,7 @@ test('a new moderator is brought into a moderators-only channel', async ({ brows
     (m) => m.membership === 'join',
     30_000
   );
-  await davePage.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
+  await openSpace(davePage, spaceName);
   await expect(role(davePage, 'channel-list-item').filter({ hasText: 'general' })).toBeVisible();
 });
 

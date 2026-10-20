@@ -7,6 +7,7 @@ import { InstallAppSettings } from './InstallAppSettings';
 import { KeywordNotificationSettings } from './KeywordNotificationSettings';
 import { PostNotificationSettings } from './PostNotificationSettings';
 import { useMatrixClient } from '../matrix/MatrixClientContext';
+import { logoutClient } from '../matrix/client';
 import {
   loadOwnPresence,
   removeAccountBanner,
@@ -73,6 +74,7 @@ export function AccountGeneralSettings({ onClose }: { onClose: () => void }) {
   const [statusMsg, setStatusMsg] = useState(() => ownPresence.statusMsg ?? '');
   const [statusTouched, setStatusTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState<string>();
   const [notificationStatus, setNotificationStatus] = useState<NotificationSupport>(getNotificationPermission);
   const bannerPreviewUrl = useMediaUrl(bannerFile ? null : extendedProfile.bannerUrl, { width: 600, height: 180, method: 'crop' });
@@ -106,6 +108,16 @@ export function AccountGeneralSettings({ onClose }: { onClose: () => void }) {
   };
   const previewName = name.trim() || profile.displayName || 'You';
   const customNameColor = nameColor && !(NAME_COLOR_PRESETS as readonly string[]).includes(nameColor);
+
+  const handleSignOut = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logoutClient(mx);
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   const handleEnableNotifications = async () => {
     setNotificationStatus(await requestNotificationPermission());
@@ -373,6 +385,19 @@ export function AccountGeneralSettings({ onClose }: { onClose: () => void }) {
           }}
         >
           Show the welcome guide
+        </button>
+      </div>
+      <div className="nu-field">
+        Sign out
+        <p className="nu-field__hint">Sign out of this device.</p>
+        <button
+          type="button"
+          className="nu-button nu-button--secondary"
+          data-nu-role="user-panel-logout"
+          disabled={loggingOut}
+          onClick={() => void handleSignOut()}
+        >
+          {loggingOut ? 'Signing out…' : 'Sign out'}
         </button>
       </div>
       {error && (
