@@ -7,13 +7,25 @@
   justify-content: center;
   z-index: 200;
   cursor: zoom-out;
+  /* Pinches and drags are the viewer's own (Lightbox.tsx), not the browser's. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
 }
 
 .nu-lightbox__image {
   max-width: 90vw;
   max-height: 90vh;
   border-radius: var(--nu-radius-md);
-  cursor: default;
+  cursor: zoom-in;
+  transform-origin: center;
+  will-change: transform;
+  -webkit-touch-callout: none;
+}
+
+.nu-lightbox__image--zoomed {
+  cursor: grab;
 }
 
 .nu-lightbox__close {
@@ -33,6 +45,8 @@
   font-size: 24px;
   line-height: 1;
   cursor: pointer;
+  /* Above the picture once it's zoomed in over the corner. */
+  z-index: 1;
 }
 
 .nu-lightbox__close:hover {
