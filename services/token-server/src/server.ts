@@ -3,10 +3,11 @@ import express from 'express';
 import { ipWatch } from './ipWatch.js';
 import cors from 'cors';
 import { corsOptions, parseAllowedOrigins } from './corsPolicy.js';
-import { AccessToken, RoomServiceClient, TrackSource } from 'livekit-server-sdk';
+import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import { validateOpenIdToken } from './openid.js';
 import { checkMembership, getBotUserId, getServiceClient, mayViewParticipants } from './membership.js';
 import { grantsForPowerLevel } from './grants.js';
+import { toVoiceParticipant, type VoiceParticipant } from './voiceParticipant.js';
 import { livekitRoomName } from './livekitRoomName.js';
 import { handleWebhook } from './webhooks.js';
 import { controlDeps, publicWebRouter, serverName } from './publicWebRoutes.js';
@@ -171,8 +172,6 @@ app.post('/api/livekit/token', async (req, res) => {
 // more reliable to just ask for than to keep a hand-rolled cache in sync).
 const roomService = new RoomServiceClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
 
-type VoiceParticipant = { identity: string; micMuted: boolean; deafened: boolean; joinedAt: number };
-
 /** One request can ask about this many channels at most — the channel list asks about one. */
 const MAX_PARTICIPANT_ROOMS = 50;
 
@@ -217,19 +216,7 @@ app.post('/api/livekit/rooms/participants', async (req, res) => {
       if (!(await mayViewParticipants(userId, roomId).catch(() => false))) return;
       try {
         const participants = await roomService.listParticipants(livekitRoomName(roomId));
-        result[roomId] = participants.map((p) => {
-          const micTrack = p.tracks.find((t) => t.source === TrackSource.MICROPHONE);
-          return {
-            identity: p.identity,
-            micMuted: micTrack?.muted ?? true,
-            // Broadcast by the client itself via localParticipant.setAttributes — LiveKit has
-            // no built-in "deafened" concept (muting your own playback of others isn't
-            // something the server can see), see VoiceChannelPanel.tsx's toggleDeafen.
-            deafened: p.attributes.deafened === 'true',
-            // So the channel list can show people in the order they joined; LiveKit's own order isn't fixed.
-            joinedAt: Number(p.joinedAtMs) || Number(p.joinedAt) * 1000,
-          };
-        });
+        result[roomId] = participants.map(toVoiceParticipant);
       } catch {
         result[roomId] = []; // No LiveKit room yet (nobody's joined) — not an error.
       }
