@@ -277,7 +277,7 @@ describe('The social side against the demo world', () => {
   it('lists its own places in the channel column instead of your DMs', () => {
     renderWithDemo(<ChannelList />, { spaceId: null, globalFeed: true });
 
-    for (const name of ['Everyone', 'Following', 'Notifications', 'Your profile', 'Cat Café', 'Pixel Arcade']) {
+    for (const name of ['Everyone', 'Following', 'Cat Café', 'Pixel Arcade']) {
       expect(screen.getByText(name)).toBeInTheDocument();
     }
     expect(screen.queryByText('Direct messages')).not.toBeInTheDocument();
@@ -319,7 +319,7 @@ describe('The social side against the demo world', () => {
     expect(await screen.findByPlaceholderText(/Post something to Cat Café/)).toBeInTheDocument();
     // Still the social sidebar, not the Space's channel list. (The global feed stays mounted, hidden,
     // behind the Space's Posts, with its own Notifications tab: the sidebar is the one meant.)
-    expect(within(document.querySelector<HTMLElement>('[data-nu-role="social-nav"]')!).getByText('Notifications')).toBeInTheDocument();
+    expect(within(document.querySelector<HTMLElement>('[data-nu-role="social-nav"]')!).getByText('Everyone')).toBeInTheDocument();
     expect(screen.queryByText('Text channels')).not.toBeInTheDocument();
     expect(store.get(globalFeedOpenAtom)).toBe(true);
     expect(store.get(socialSpaceIdAtom)).toBe(DEMO_ROOM_IDS.cafe);
