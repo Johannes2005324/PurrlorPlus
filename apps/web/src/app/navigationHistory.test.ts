@@ -5,7 +5,7 @@ const HOME: View = {
   spaceId: null,
   roomId: null,
   spaceView: null,
-  globalFeed: false,
+  railSection: 'messages',
   socialView: 'everyone',
   socialSpaceId: null,
   profileUserId: null,

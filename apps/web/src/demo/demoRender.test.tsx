@@ -4,6 +4,7 @@ import { Provider as JotaiProvider, createStore } from 'jotai';
 import { MatrixClientContext } from '../matrix/MatrixClientContext';
 import {
   globalFeedOpenAtom,
+  railSectionAtom,
   selectedRoomIdAtom,
   selectedSpaceIdAtom,
   selectedSpaceViewAtom,
@@ -76,6 +77,7 @@ function renderWithDemo(
 ) {
   const mx = createDemoClient();
   const store = createStore();
+  store.set(railSectionAtom, 'messages');
   if (selected.spaceId !== undefined) store.set(selectedSpaceIdAtom, selected.spaceId);
   if (selected.roomId !== undefined) store.set(selectedRoomIdAtom, selected.roomId);
   if (selected.globalFeed) store.set(globalFeedOpenAtom, true);

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useSetAtom } from 'jotai';
 import type { IPublicRoomsChunkRoom, Room } from 'matrix-js-sdk';
-import { globalFeedOpenAtom, profileUserIdAtom, selectedRoomIdAtom, selectedSpaceIdAtom, selectedSpaceViewAtom } from '../../app/state/selection';
+import { railSectionAtom, profileUserIdAtom, selectedRoomIdAtom, selectedSpaceIdAtom, selectedSpaceViewAtom } from '../../app/state/selection';
 import { Avatar } from '../../components/Avatar';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import { browsePublicSpaces } from '../../matrix/directory';
@@ -15,10 +15,10 @@ export function useOpenJoined(): (room: Room) => void {
   const setSpace = useSetAtom(selectedSpaceIdAtom);
   const setRoom = useSetAtom(selectedRoomIdAtom);
   const setView = useSetAtom(selectedSpaceViewAtom);
-  const setFeedOpen = useSetAtom(globalFeedOpenAtom);
+  const setFeedOpen = useSetAtom(railSectionAtom);
   const setProfile = useSetAtom(profileUserIdAtom);
   return (room) => {
-    setFeedOpen(false);
+    setFeedOpen('messages');
     setProfile(null);
     setView(null);
     if (room.isSpaceRoom()) {

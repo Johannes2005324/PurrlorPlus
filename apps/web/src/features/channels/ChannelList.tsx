@@ -10,6 +10,7 @@ import {
   selectedSpaceViewAtom,
   channelComposerFocusAtom,
   globalFeedOpenAtom,
+  railSectionAtom,
   openPostAtom,
   profileUserIdAtom,
 } from '../../app/state/selection';
@@ -565,6 +566,7 @@ export function ChannelList() {
   const [selectedRoomId, setSelectedRoomId] = useAtom(selectedRoomIdAtom);
   const [spaceView, setSpaceView] = useAtom(selectedSpaceViewAtom);
   const [globalFeedOpen, setGlobalFeedOpen] = useAtom(globalFeedOpenAtom);
+  const section = useAtomValue(railSectionAtom);
   const [profileUserId, setProfileUserId] = useAtom(profileUserIdAtom);
   const openPost = useAtomValue(openPostAtom);
   const space = useRoom(selectedSpaceId);
@@ -610,7 +612,7 @@ export function ChannelList() {
   // a message from a notification — is left alone.
   // Not on a phone: there the page is this channel list until something is picked, and Back from a
   // chat leaves nothing chosen, so landing would put you straight back in the chat you just left.
-  const nothingChosen = !!space && !selectedRoomId && spaceView === null && !globalFeedOpen && !profileUserId && !openPost;
+  const nothingChosen = section === 'messages' && !!space && !selectedRoomId && spaceView === null && !globalFeedOpen && !profileUserId && !openPost;
   useEffect(() => {
     if (!space || !nothingChosen || window.matchMedia?.(PHONE_WIDTH).matches) return;
     // Read fresh, not from spaceRooms/categories: right after switching Spaces those still hold the
@@ -755,6 +757,31 @@ export function ChannelList() {
     return (
       <aside className="nu-channel-list" data-nu-role="channel-list">
         <SocialNav />
+        <NowPlayingCard />
+        <MusicPlayerBar variant="card" />
+        <ActiveCallBar />
+        <UserPanel />
+      </aside>
+    );
+  }
+
+  // Home is a page of its own; this column only has a small nav for it (no DM list: that's Messages).
+  if (section === 'home') {
+    return (
+      <aside className="nu-channel-list" data-nu-role="channel-list">
+        <div className="nu-channel-list__header" data-nu-role="channel-list-header">
+          <span className="nu-channel-list__header-title">Home</span>
+        </div>
+        <div className="nu-channel-list__body" data-nu-role="channel-list-body">
+          <div className="nu-channel-list__row">
+            <button type="button" className="nu-channel-list__item nu-channel-list__item--active" data-nu-role="home-nav-overview" aria-current="page">
+              <span className="nu-channel-list__item-icon" aria-hidden="true">
+                <Icon name="paw" size={18} />
+              </span>
+              <span className="nu-channel-list__item-name">What’s happening</span>
+            </button>
+          </div>
+        </div>
         <NowPlayingCard />
         <MusicPlayerBar variant="card" />
         <ActiveCallBar />

@@ -111,7 +111,7 @@ test('a mention that arrives while Notifications sits hidden behind another page
   const bell = role(page, 'server-rail-notifications');
   await bell.click();
   await expect(role(page, 'social-nav')).toBeVisible();
-  await role(page, 'server-rail-home').click();
+  await role(page, 'server-rail-messages').click();
   await expect(role(page, 'social-nav')).toHaveCount(0);
 
   await api(bob, 'PUT', `/rooms/${encodeURIComponent(channelId)}/send/m.room.message/${uniqueName('txn')}`, {

@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useSetAtom } from 'jotai';
 import {
   activeVoiceChannelIdAtom,
-  globalFeedOpenAtom,
+  railSectionAtom,
   profileUserIdAtom,
   selectedRoomIdAtom,
   selectedSpaceIdAtom,
@@ -21,14 +21,14 @@ export function useJoinVoiceChannel(): (channelId: string) => void {
   const setSpaceId = useSetAtom(selectedSpaceIdAtom);
   const setRoomId = useSetAtom(selectedRoomIdAtom);
   const setSpaceView = useSetAtom(selectedSpaceViewAtom);
-  const setGlobalFeedOpen = useSetAtom(globalFeedOpenAtom);
+  const setGlobalFeedOpen = useSetAtom(railSectionAtom);
   const setProfileUserId = useSetAtom(profileUserIdAtom);
   const setActiveVoiceChannelId = useSetAtom(activeVoiceChannelIdAtom);
 
   return useCallback(
     (channelId: string) => {
       const room = mx.getRoom(channelId);
-      setGlobalFeedOpen(false);
+      setGlobalFeedOpen('messages');
       setProfileUserId(null);
       setSpaceView(null);
       setSpaceId(room ? (getParentSpace(mx, room)?.roomId ?? null) : null);

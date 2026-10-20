@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAtom, useSetAtom } from 'jotai';
 import { ClientEvent, SyncState } from 'matrix-js-sdk';
 import { welcomeGuideOpenAtom } from '../../app/state/onboarding';
-import { selectedRoomIdAtom, selectedSpaceIdAtom } from '../../app/state/selection';
+import { selectedRoomIdAtom, selectedSpaceIdAtom, railSectionAtom } from '../../app/state/selection';
 import { Icon } from '../../components/Icon';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import { useSpaces } from '../../matrix/hooks/useSpaces';
@@ -64,6 +64,7 @@ export function NoSpacesYet() {
   const openJoined = useOpenJoined();
   const setSpace = useSetAtom(selectedSpaceIdAtom);
   const setRoom = useSetAtom(selectedRoomIdAtom);
+  const setRailSection = useSetAtom(railSectionAtom);
   return (
     <div className="nu-no-spaces" data-nu-role="no-spaces-yet">
       <Icon name="paw" size={40} className="nu-main-pane__empty-icon" />
@@ -91,6 +92,7 @@ export function NoSpacesYet() {
             setShowDiscover(false);
             setSpace(roomId);
             setRoom(null);
+            setRailSection('messages');
           }}
         />
       )}
@@ -101,6 +103,7 @@ export function NoSpacesYet() {
             setShowCreate(false);
             setSpace(roomId);
             setRoom(null);
+            setRailSection('messages');
           }}
         />
       )}

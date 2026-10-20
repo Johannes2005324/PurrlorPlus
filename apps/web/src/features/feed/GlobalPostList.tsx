@@ -1,6 +1,6 @@
 import { useSetAtom } from 'jotai';
 import {
-  globalFeedOpenAtom,
+  railSectionAtom,
   profileUserIdAtom,
   selectedRoomIdAtom,
   selectedSpaceIdAtom,
@@ -32,7 +32,7 @@ export function GlobalPostList({
   const mx = useMatrixClient();
   const myUserId = mx.getUserId() ?? '';
   const setProfileUserId = useSetAtom(profileUserIdAtom);
-  const setGlobalFeedOpen = useSetAtom(globalFeedOpenAtom);
+  const setGlobalFeedOpen = useSetAtom(railSectionAtom);
   const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
   const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
   const setSpaceView = useSetAtom(selectedSpaceViewAtom);
@@ -40,7 +40,7 @@ export function GlobalPostList({
   const openSpacePosts = (origin: PostOrigin) => {
     if (origin.kind !== 'space') return;
     setProfileUserId(null);
-    setGlobalFeedOpen(false);
+    setGlobalFeedOpen('messages');
     setSelectedSpaceId(origin.spaceId);
     setSelectedRoomId(null);
     setSpaceView('feed');

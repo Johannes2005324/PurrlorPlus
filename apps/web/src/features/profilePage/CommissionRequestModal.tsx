@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useSetAtom } from 'jotai';
-import { selectedRoomIdAtom, selectedSpaceIdAtom, profileUserIdAtom } from '../../app/state/selection';
+import { selectedRoomIdAtom, selectedSpaceIdAtom, profileUserIdAtom, railSectionAtom } from '../../app/state/selection';
 import { Modal } from '../../components/Modal';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import { COMMISSION_LIMITS, sendCommissionRequest, type CommissionType } from '../../matrix/commissions';
@@ -14,6 +14,7 @@ export function CommissionRequestModal({ artistId, types, onClose }: { artistId:
   const mx = useMatrixClient();
   const setSpaceId = useSetAtom(selectedSpaceIdAtom);
   const setRoomId = useSetAtom(selectedRoomIdAtom);
+  const setRailSection = useSetAtom(railSectionAtom);
   const setProfileUserId = useSetAtom(profileUserIdAtom);
   const [typeId, setTypeId] = useState(types[0]?.id ?? '');
   const [description, setDescription] = useState('');
@@ -33,6 +34,7 @@ export function CommissionRequestModal({ artistId, types, onClose }: { artistId:
       setProfileUserId(null);
       setSpaceId(null);
       setRoomId(roomId);
+      setRailSection('messages');
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Couldn’t send your request');

@@ -107,7 +107,7 @@ test('a link in an encrypted chat gets no embed, and its link goes nowhere', asy
   const seen: string[] = [];
   await routePublicApi(page, seen);
   await logIn(page, alice);
-  await role(page, 'server-rail-home').click();
+  await role(page, 'server-rail-messages').click();
   await role(page, 'channel-list-item').filter({ hasText: name }).getByText(name, { exact: true }).click();
   const input = role(page, 'composer-input');
   await input.click();

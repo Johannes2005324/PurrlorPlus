@@ -3,8 +3,9 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { unreadActivityCountAtom } from '../../app/state/feed';
 import type { Room } from 'matrix-js-sdk';
 import {
-  globalFeedOpenAtom,
+  openPostAtom,
   profileUserIdAtom,
+  railSectionAtom,
   selectedRoomIdAtom,
   selectedSpaceIdAtom,
   selectedSpaceViewAtom,
@@ -24,9 +25,11 @@ import { describeRoomLevel } from '../../matrix/notificationSettings';
 import { CreateSpaceModal } from './CreateSpaceModal';
 import { locateInList, usePointerDrag } from '../../components/usePointerDrag';
 import { moveSpace } from '../../matrix/spaceOrder';
+import { AccountSettingsModal } from '../../app/AccountSettingsModal';
+import { useOwnProfile } from '../../matrix/hooks/useOwnProfile';
 import { RailClock } from '../../app/StatusClock';
 import { mobileSpacesOpenAtom } from '../../app/state/mobile';
-import { nameHue } from '../../components/Avatar';
+import { Avatar, nameHue } from '../../components/Avatar';
 import { notifyAria } from '../invites/notifyAria';
 import './ServerRail.css';
 
@@ -46,6 +49,9 @@ function CatEars() {
 /** The rail's line icons, drawn the Ultimit way: square joins, one stroke weight. */
 const RAIL_ICONS = {
   home: 'M3 11l9-7 9 7v9H3zM9 20v-6h6v6',
+  messages: 'M4 4h16v12H9l-5 4zM8 8.5h8M8 12h5',
+  settings:
+    'M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1',
   feed: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9',
   notify: 'M6 16V10a6 6 0 0 1 12 0v6l2 2H4zM10 21h4',
   discover: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM15.5 8.5l-2 5-5 2 2-5z',
@@ -131,10 +137,10 @@ function ServerRailItem({ space, active, onSelect, drag }: { space: Room; active
   );
 }
 
-/** How many unread DMs get their own tile under Home; the rest are in Home's count. */
+/** How many unread DMs get their own tile under Messages; the rest are in Messages' count. */
 const MAX_DM_TILES = 3;
 
-/** An unread DM in the rail, under Home: who it's with, and how many messages, one click away. */
+/** An unread DM in the rail, under Messages: who it's with, and how many messages, one click away. */
 function DirectMessageRailItem({ room, count, onSelect }: { room: Room; count: number; onSelect: () => void }) {
   const mxc = room.getMxcAvatarUrl() ?? room.getAvatarFallbackMember()?.getMxcAvatarUrl() ?? null;
   const src = useMediaUrl(mxc, { width: 96, height: 96, method: 'crop' });
@@ -163,7 +169,7 @@ function DirectMessageRailItem({ room, count, onSelect }: { room: Room; count: n
   );
 }
 
-/** Left icon rail — one icon per joined Matrix Space, mapped to a Discord "server". */
+/** The app's main navigation: Home, Feed and Messages, then one icon per joined Matrix Space (a Discord "server"), then Notifications, Discover and Create, with your profile and settings at the foot. */
 export function ServerRail() {
   const mx = useMatrixClient();
   const storedSpaces = useSpaces();
@@ -207,14 +213,18 @@ export function ServerRail() {
   const invites = useInvites();
   const [selectedSpaceId, setSelectedSpaceId] = useAtom(selectedSpaceIdAtom);
   const [, setSelectedRoomId] = useAtom(selectedRoomIdAtom);
-  const [globalFeedOpen, setGlobalFeedOpen] = useAtom(globalFeedOpenAtom);
+  const [section, setSection] = useAtom(railSectionAtom);
+  const globalFeedOpen = section === 'feed';
+  const setOpenPost = useSetAtom(openPostAtom);
+  const [profileUserId, setProfileUserId] = useAtom(profileUserIdAtom);
+  const me = useOwnProfile();
+  const [showSettings, setShowSettings] = useState(false);
   const socialView = useAtomValue(socialViewAtom);
   const unreadNotifications = useAtomValue(unreadActivityCountAtom);
   const openSocial = useOpenSocial();
   const onNotifications = globalFeedOpen && socialView === 'notifications';
   // Notify counts invites too: they're answered from the top of Notifications (InvitesWaiting).
   const notifyCount = unreadNotifications + invites.length;
-  const setProfileUserId = useSetAtom(profileUserIdAtom);
   const setSpaceView = useSetAtom(selectedSpaceViewAtom);
   const [showCreateSpace, setShowCreateSpace] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
@@ -232,7 +242,7 @@ export function ServerRail() {
   const setMobileSpacesOpen = useSetAtom(mobileSpacesOpenAtom);
   const selectSpace = (id: string | null) => {
     setMobileSpacesOpen(false);
-    setGlobalFeedOpen(false);
+    setSection('messages');
     setProfileUserId(null);
     setSelectedSpaceId(id);
     setSelectedRoomId(null);
@@ -241,41 +251,108 @@ export function ServerRail() {
 
   const openDirectMessage = (roomId: string) => {
     setMobileSpacesOpen(false);
-    setGlobalFeedOpen(false);
+    setSection('messages');
     setProfileUserId(null);
     setSpaceView(null);
     setSelectedSpaceId(null);
     setSelectedRoomId(roomId);
   };
 
+  // Home is a page of its own, and Messages comes back to where you left it (the Space and room are
+  // still in their atoms); clicking Messages while already there opens the Direct Messages list.
+  const goHome = () => {
+    setMobileSpacesOpen(false);
+    setOpenPost(null);
+    setProfileUserId(null);
+    setSection('home');
+  };
+  const goMessages = () => {
+    if (section === 'messages') {
+      selectSpace(null);
+      return;
+    }
+    setMobileSpacesOpen(false);
+    setOpenPost(null);
+    setProfileUserId(null);
+    setSection('messages');
+  };
+  // Your profile sits on the social side, like everyone's (as MobileTabBar's You tab does).
+  const openOwnProfile = () => {
+    setMobileSpacesOpen(false);
+    setOpenPost(null);
+    setSection('feed');
+    setProfileUserId(me.userId);
+  };
+  const onOwnProfile = !!profileUserId && profileUserId === me.userId;
+
   return (
     <nav className="nu-server-rail" data-nu-role="server-rail">
       <Emblem />
+      {/* Home: the dashboard, "Here's what's happening" (features/home/HomeView.tsx). */}
+      <button
+        type="button"
+        className={section === 'home' ? 'nu-server-rail__item nu-server-rail__item--home nu-server-rail__item--active' : 'nu-server-rail__item nu-server-rail__item--home'}
+        data-nu-role="server-rail-home"
+        title="Home"
+        aria-label="Home"
+        aria-current={section === 'home' ? 'page' : undefined}
+        onClick={goHome}
+      >
+        <span className="nu-server-rail__icon">
+          <RailIcon name="home" />
+        </span>
+        <span className="nu-server-rail__label" aria-hidden="true">
+          Home
+        </span>
+      </button>
+      {/* Feed: the social side. */}
+      <button
+        type="button"
+        className={
+          globalFeedOpen
+            ? 'nu-server-rail__item nu-server-rail__item--global-feed nu-server-rail__item--active'
+            : 'nu-server-rail__item nu-server-rail__item--global-feed'
+        }
+        data-nu-role="server-rail-global-feed"
+        title="Global feed"
+        aria-label="Global feed"
+        aria-current={globalFeedOpen ? 'page' : undefined}
+        onClick={() => openSocial(socialView === 'notifications' ? 'everyone' : socialView)}
+      >
+        <span className="nu-server-rail__icon">
+          <RailIcon name="feed" />
+        </span>
+        <span className="nu-server-rail__label" aria-hidden="true">
+          Feed
+        </span>
+      </button>
+      {/* Messages: Direct Messages, and the Spaces below. */}
       <button
         type="button"
         className={
           [
             'nu-server-rail__item',
-            'nu-server-rail__item--home',
-            selectedSpaceId === null && !globalFeedOpen && 'nu-server-rail__item--active',
+            'nu-server-rail__item--messages',
+            section === 'messages' && 'nu-server-rail__item--active',
             (dmCountTotal > 0 || dmUnread.total > 0) && 'nu-server-rail__item--unread',
           ]
             .filter(Boolean)
             .join(' ')
         }
-        data-nu-role="server-rail-home"
-        title="Direct Messages"
-        aria-label={dmCountTotal > 0 ? `Direct Messages, ${dmCountTotal} unread` : 'Direct Messages'}
-        onClick={() => selectSpace(null)}
+        data-nu-role="server-rail-messages"
+        title="Messages"
+        aria-label={dmCountTotal > 0 ? `Messages, ${dmCountTotal} unread` : 'Messages'}
+        aria-current={section === 'messages' ? 'page' : undefined}
+        onClick={goMessages}
       >
         <span className="nu-server-rail__icon">
-          <RailIcon name="home" />
+          <RailIcon name="messages" />
           <span className="nu-server-rail__item-badge">
             <UnreadBadge total={dmCountTotal || dmUnread.total} highlight={dmCountTotal} />
           </span>
         </span>
         <span className="nu-server-rail__label" aria-hidden="true">
-          Home
+          Messages
         </span>
       </button>
       {unreadDms.map((room) => (
@@ -286,6 +363,7 @@ export function ServerRail() {
           onSelect={() => openDirectMessage(room.roomId)}
         />
       ))}
+      <div className="nu-server-rail__divider" />
       <div
         className={spaceDrag.dragging ? 'nu-server-rail__list nu-server-rail__list--dragging' : 'nu-server-rail__list'}
         data-nu-role="server-rail-list"
@@ -301,7 +379,7 @@ export function ServerRail() {
               onPointerDown: (event) => spaceDrag.start({ id: space.roomId, label: space.name }, event),
             }}
             space={space}
-            active={selectedSpaceId === space.roomId && !globalFeedOpen}
+            active={selectedSpaceId === space.roomId && section === 'messages'}
             onSelect={() => selectSpace(space.roomId)}
           />
         ))}
@@ -312,26 +390,6 @@ export function ServerRail() {
         </div>
       )}
       <div className="nu-server-rail__divider" />
-      <button
-        type="button"
-        className={
-          globalFeedOpen && !onNotifications
-            ? 'nu-server-rail__item nu-server-rail__item--global-feed nu-server-rail__item--active'
-            : 'nu-server-rail__item nu-server-rail__item--global-feed'
-        }
-        data-nu-role="server-rail-global-feed"
-        title="Global feed"
-        aria-label="Global feed"
-        aria-current={globalFeedOpen && !onNotifications ? 'page' : undefined}
-        onClick={() => openSocial(socialView === 'notifications' ? 'everyone' : socialView)}
-      >
-        <span className="nu-server-rail__icon">
-          <RailIcon name="feed" />
-        </span>
-        <span className="nu-server-rail__label" aria-hidden="true">
-          Feed
-        </span>
-      </button>
       {/* Everything that's about you, in one place: mentions anywhere, and what people did with
           your posts and profile (the social side's Notifications page). */}
       <button
@@ -389,11 +447,43 @@ export function ServerRail() {
       </button>
       {/* The rest of the rail's height, between Create and the clock: the Spaces only take what they need. */}
       <div className="nu-server-rail__spacer" aria-hidden="true" />
+      <button
+        type="button"
+        className={onOwnProfile ? 'nu-server-rail__item nu-server-rail__item--profile nu-server-rail__item--active' : 'nu-server-rail__item nu-server-rail__item--profile'}
+        data-nu-role="server-rail-profile"
+        title="Your profile"
+        aria-label="Your profile"
+        aria-current={onOwnProfile ? 'page' : undefined}
+        onClick={openOwnProfile}
+      >
+        <span className="nu-server-rail__icon">
+          <Avatar name={me.displayName} mxcUrl={me.avatarUrl} size={28} />
+        </span>
+        <span className="nu-server-rail__label" aria-hidden="true">
+          Profile
+        </span>
+      </button>
+      <button
+        type="button"
+        className="nu-server-rail__item nu-server-rail__item--settings"
+        data-nu-role="server-rail-settings"
+        title="Settings"
+        aria-label="Settings"
+        onClick={() => setShowSettings(true)}
+      >
+        <span className="nu-server-rail__icon">
+          <RailIcon name="settings" />
+        </span>
+        <span className="nu-server-rail__label" aria-hidden="true">
+          Settings
+        </span>
+      </button>
       <RailClock />
       {/* The mockup's version line, running up the rail: the app and the server you're on. */}
       <div className="nu-server-rail__ver" aria-hidden="true">
         PURRLOR · {(mx.getDomain() ?? '').toUpperCase()}
       </div>
+      {showSettings && <AccountSettingsModal onClose={() => setShowSettings(false)} />}
       {showCreateSpace && (
         <CreateSpaceModal
           onClose={() => setShowCreateSpace(false)}

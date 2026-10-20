@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
   globalFeedOpenAtom,
+  railSectionAtom,
   socialSpaceIdAtom,
   openPostAtom,
   profileUserIdAtom,
@@ -32,6 +33,7 @@ import { MessageTimeline } from './MessageTimeline';
 import { PinnedMessagesPanel } from './PinnedMessagesPanel';
 import { ThreadsOverviewModal } from './ThreadsOverviewModal';
 import { TopicBanner } from './TopicBanner';
+import { HomeView } from '../home/HomeView';
 import { TypingIndicator } from './TypingIndicator';
 import { NoSpacesYet, useInNoSpace } from '../onboarding/WelcomeGuideHost';
 import { isDemoMode } from '../../demo/demoMode';
@@ -110,7 +112,8 @@ function MainPaneContent() {
   const [selectedRoomId, setSelectedRoomId] = useAtom(selectedRoomIdAtom);
   const selectedSpaceId = useAtomValue(selectedSpaceIdAtom);
   const spaceView = useAtomValue(selectedSpaceViewAtom);
-  const [globalFeedOpen, setGlobalFeedOpen] = useAtom(globalFeedOpenAtom);
+  const [globalFeedOpen] = useAtom(globalFeedOpenAtom);
+  const [section, setSection] = useAtom(railSectionAtom);
   const [socialSpaceId, setSocialSpaceId] = useAtom(socialSpaceIdAtom);
   const [profileUserId, setProfileUserId] = useAtom(profileUserIdAtom);
   const [openPost, setOpenPost] = useAtom(openPostAtom);
@@ -140,18 +143,22 @@ function MainPaneContent() {
 
   // Any route to a room — a channel click, a notification, a search result, the call bar — means
   // the user wants that room, not the global feed sitting on top of it.
+  // Not when the section changed in the same step (Back or Forward putting a whole view back).
+  const lastSection = useRef(section);
   useEffect(() => {
-    if (!selectedRoomId) return;
-    setGlobalFeedOpen(false);
+    const sectionChanged = lastSection.current !== section;
+    lastSection.current = section;
+    if (!selectedRoomId || sectionChanged) return;
+    setSection('messages');
     setProfileUserId(null);
-  }, [selectedRoomId, setGlobalFeedOpen, setProfileUserId]);
+  }, [selectedRoomId, section, setSection, setProfileUserId]);
 
   // A post's page sits over whatever it was opened from, and going anywhere else — a channel,
   // a Space, the global feed, a profile — closes it. Opening a post changes none of these, so it
   // survives its own opening; Back (in PostPage) returns to what was underneath.
   useEffect(() => {
     setOpenPost(null);
-  }, [selectedRoomId, selectedSpaceId, spaceView, globalFeedOpen, profileUserId, setOpenPost]);
+  }, [selectedRoomId, selectedSpaceId, spaceView, section, profileUserId, setOpenPost]);
 
   // Feeds are a merge across many rooms rather than one selected room, so they take precedence
   // over whatever channel happens to still be selected behind them. A profile sits over a feed,
@@ -159,9 +166,12 @@ function MainPaneContent() {
   // the same tab and scroll position instead of reloading the feed from the top.
   // A Space's Posts opened from the social side's sidebar (socialSpaceIdAtom) stands in for the
   // global feed there; opened from its channel list, it's the Space's own page.
+  const inHome = section === 'home';
   const socialSpace = globalFeedOpen && socialSpaceId ? mx.getRoom(socialSpaceId) : null;
-  const feedSpace = socialSpace ?? (spaceView === 'feed' && selectedSpaceId ? mx.getRoom(selectedSpaceId) : null);
+  const feedSpace = socialSpace ?? (!inHome && spaceView === 'feed' && selectedSpaceId ? mx.getRoom(selectedSpaceId) : null);
   const feed = socialSpace ? 'space' : globalFeedOpen ? 'global' : feedSpace ? 'space' : null;
+  // Home is its own page; a profile or post opened from it sits over it, as over any section.
+  if (inHome && !profileUserId && !openPost) return <HomeView />;
   const calendarSpace = spaceView === 'events' && selectedSpaceId && !globalFeedOpen ? mx.getRoom(selectedSpaceId) : null;
   if (calendarSpace && !profileUserId && !openPost) return <CalendarView key={calendarSpace.roomId} space={calendarSpace} />;
   const newsSpace = spaceView === 'news' && selectedSpaceId && !globalFeedOpen ? mx.getRoom(selectedSpaceId) : null;

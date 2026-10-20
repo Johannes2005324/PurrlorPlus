@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import type { MatrixClient, SearchResult } from 'matrix-js-sdk';
 import { useSetAtom } from 'jotai';
-import { pendingJumpTargetAtom, selectedRoomIdAtom, selectedSpaceIdAtom } from '../../app/state/selection';
+import { pendingJumpTargetAtom, selectedRoomIdAtom, selectedSpaceIdAtom, railSectionAtom } from '../../app/state/selection';
 import { Modal } from '../../components/Modal';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import { searchMessages } from '../../matrix/search';
@@ -33,6 +33,7 @@ function ResultRow({ mx, result, showRoomName, onOpen }: { mx: MatrixClient; res
 export function MessageSearchModal({ roomId, onClose }: { roomId: string | null; onClose: () => void }) {
   const mx = useMatrixClient();
   const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
+  const setRailSection = useSetAtom(railSectionAtom);
   const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
   const setPendingJump = useSetAtom(pendingJumpTargetAtom);
   const [term, setTerm] = useState('');
@@ -63,6 +64,7 @@ export function MessageSearchModal({ roomId, onClose }: { roomId: string | null;
     if (!targetRoomId || !targetEventId) return;
     setSelectedSpaceId(findParentSpaceId(mx, targetRoomId));
     setSelectedRoomId(targetRoomId);
+    setRailSection('messages');
     setPendingJump({ roomId: targetRoomId, eventId: targetEventId });
     onClose();
   };

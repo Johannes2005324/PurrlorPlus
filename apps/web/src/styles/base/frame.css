@@ -525,7 +525,7 @@ html[data-nu-effects='safe'] .nu-profile-page__particle {
 
   /* Its title, like a window's. */
   .nu-shell[data-nu-mobile-pane='spaces'] .nu-server-rail::before {
-    content: 'Spaces';
+    content: 'Messages';
     grid-column: 1 / -1;
     margin: 0 0 var(--nu-space-2);
     font-family: var(--nu-font-display);
@@ -538,6 +538,8 @@ html[data-nu-effects='safe'] .nu-profile-page__particle {
   .nu-shell[data-nu-mobile-pane='spaces'] :is(
       .nu-server-rail__emblem,
       [data-nu-role='server-rail-home'],
+      [data-nu-role='server-rail-profile'],
+      [data-nu-role='server-rail-settings'],
       [data-nu-role='server-rail-dm'],
       [data-nu-role='server-rail-global-feed'],
       [data-nu-role='server-rail-notifications'],

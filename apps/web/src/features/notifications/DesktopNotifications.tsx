@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { isTaggedIn } from '../../matrix/imageTags';
 import { RoomEvent, type MatrixEvent, type Room } from 'matrix-js-sdk';
-import { selectedRoomIdAtom, selectedSpaceIdAtom } from '../../app/state/selection';
+import { selectedRoomIdAtom, selectedSpaceIdAtom, railSectionAtom } from '../../app/state/selection';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import { isPostActivity } from '../../matrix/postNotifications';
 import { findParentSpaceId } from '../../matrix/spaceChildren';
@@ -24,6 +24,7 @@ export function DesktopNotifications() {
   const mx = useMatrixClient();
   const selectedRoomId = useAtomValue(selectedRoomIdAtom);
   const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
+  const setRailSection = useSetAtom(railSectionAtom);
   const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
   const openFeedRoom = useOpenFeedRoom();
   const openFeedRoomRef = useRef(openFeedRoom);
@@ -115,6 +116,7 @@ export function DesktopNotifications() {
         window.focus();
         setSelectedSpaceId(findParentSpaceId(mx, room.roomId));
         setSelectedRoomId(room.roomId);
+        setRailSection('messages');
         notification.close();
       };
     };
@@ -123,7 +125,7 @@ export function DesktopNotifications() {
     return () => {
       mx.removeListener(RoomEvent.Timeline, onTimeline);
     };
-  }, [mx, setSelectedRoomId, setSelectedSpaceId]);
+  }, [mx, setSelectedRoomId, setSelectedSpaceId, setRailSection]);
 
   return null;
 }

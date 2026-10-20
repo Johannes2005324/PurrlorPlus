@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSetAtom } from 'jotai';
 import type { VerificationRequest } from 'matrix-js-sdk/lib/crypto-api';
-import { profileUserIdAtom, selectedRoomIdAtom, selectedSpaceIdAtom } from '../../app/state/selection';
+import { profileUserIdAtom, selectedRoomIdAtom, selectedSpaceIdAtom, railSectionAtom } from '../../app/state/selection';
 import { Avatar } from '../../components/Avatar';
 import { Modal } from '../../components/Modal';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
@@ -29,6 +29,7 @@ export function UserProfileModal({
 }) {
   const mx = useMatrixClient();
   const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
+  const setRailSection = useSetAtom(railSectionAtom);
   const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
   const setProfileUserId = useSetAtom(profileUserIdAtom);
   const isIgnored = useIsUserIgnored(userId);
@@ -51,6 +52,7 @@ export function UserProfileModal({
       const roomId = await openDirectMessage(mx, userId);
       setSelectedSpaceId(null);
       setSelectedRoomId(roomId);
+      setRailSection('messages');
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start conversation');

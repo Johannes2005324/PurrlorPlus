@@ -33,7 +33,7 @@ test('a link in an encrypted conversation gets no preview, so the server never l
     initial_state: [{ type: 'm.room.encryption', state_key: '', content: { algorithm: 'm.megolm.v1.aes-sha2' } }],
   });
   await logIn(page, alice);
-  await role(page, 'server-rail-home').click();
+  await role(page, 'server-rail-messages').click();
   await role(page, 'channel-list-item').filter({ hasText: name }).getByText(name, { exact: true }).click();
   const asked: string[] = [];
   page.on('request', (request) => {

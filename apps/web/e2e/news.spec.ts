@@ -6,7 +6,7 @@ const enc = encodeURIComponent;
 
 /** Leaves the Space and opens it again from the rail, the way someone coming back to it would. */
 async function reopenSpace(page: Page, spaceName: string): Promise<void> {
-  await role(page, 'server-rail-home').click();
+  await role(page, 'server-rail-messages').click();
   await page.locator(`[data-nu-role="server-rail-item"][aria-label="${spaceName}"]`).click();
 }
 

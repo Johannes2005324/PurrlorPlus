@@ -42,7 +42,7 @@ test('new private channels are encrypted, public ones aren’t, unless chosen', 
 test('a new DM is encrypted', async ({ page }) => {
   const [alice, bob] = await Promise.all([createUser('alice'), createUser('bob')]);
   await logIn(page, alice);
-  await role(page, 'server-rail-home').click();
+  await role(page, 'server-rail-messages').click();
   await role(page, 'channel-list-start-dm').click();
   await role(page, 'start-dm-user-id').fill(bob.userId);
   await role(page, 'start-dm-user-id').press('Enter');

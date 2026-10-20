@@ -45,7 +45,7 @@ import { useJoinFromInviteLink } from '../matrix/hooks/useJoinFromInviteLink';
 import { useOpenRoomFromNotification } from '../matrix/hooks/useOpenRoomFromNotification';
 import { useRecoveryStatus } from '../matrix/hooks/useRecoveryStatus';
 import { WelcomeGuideHost } from '../features/onboarding/WelcomeGuideHost';
-import { openPostAtom, globalFeedOpenAtom, profileUserIdAtom, selectedRoomIdAtom, selectedSpaceViewAtom } from './state/selection';
+import { openPostAtom, globalFeedOpenAtom, railSectionAtom, profileUserIdAtom, selectedRoomIdAtom, selectedSpaceViewAtom } from './state/selection';
 import { desktopMemberListHiddenAtom, mobileMemberListOpenAtom, mobileSpacesOpenAtom } from './state/mobile';
 
 /** Real Discord-shaped three-pane shell, wired to live Matrix data (Phase 1+). */
@@ -59,6 +59,7 @@ export function AppShell() {
   // rooms, so there's no one member list that belongs beside them. With no room open at all there
   // are no members to list, and an empty column just looked unfinished.
   const globalFeedOpen = useAtomValue(globalFeedOpenAtom);
+  const onHome = useAtomValue(railSectionAtom) === 'home';
   const spaceView = useAtomValue(selectedSpaceViewAtom);
   const profileOpen = !!useAtomValue(profileUserIdAtom);
   const postOpen = !!useAtomValue(openPostAtom);
@@ -67,7 +68,7 @@ export function AppShell() {
   const mobileSpacesOpen = useAtomValue(mobileSpacesOpenAtom);
   // On a phone the main pane only shows once there's something in it: a room, a Space's Posts,
   // or the global feed. The last two aren't rooms, so a room check alone left them invisible.
-  const mainPaneHasContent = !!selectedRoomId || spaceView !== null || globalFeedOpen || profileOpen || postOpen;
+  const mainPaneHasContent = onHome || !!selectedRoomId || spaceView !== null || globalFeedOpen || profileOpen || postOpen;
   useOpenRoomFromNotification();
   useNavigationHistory();
   useVisualViewport();
@@ -91,7 +92,7 @@ export function AppShell() {
       data-nu-ticker={tickerOn ? 'on' : undefined}
       // The global feed's own side column (FeedSidebar) takes the member list's place.
       data-nu-side={globalFeedOpen && !profileOpen && !postOpen ? 'feed' : undefined}
-      data-nu-members-hidden={membersHidden || !selectedRoomId || globalFeedOpen || profileOpen || postOpen || spaceView !== null}
+      data-nu-members-hidden={membersHidden || onHome || !selectedRoomId || globalFeedOpen || profileOpen || postOpen || spaceView !== null}
     >
       <Wallpaper />
       <StatusClock />

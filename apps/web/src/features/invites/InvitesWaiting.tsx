@@ -3,7 +3,7 @@ import { useSetAtom } from 'jotai';
 import type { Room } from 'matrix-js-sdk';
 import { mobileSpacesOpenAtom } from '../../app/state/mobile';
 import {
-  globalFeedOpenAtom,
+  railSectionAtom,
   profileUserIdAtom,
   selectedRoomIdAtom,
   selectedSpaceIdAtom,
@@ -20,7 +20,7 @@ import { InvitesModal } from './InvitesModal';
 function useOpenAcceptedInvite(): (room: Room) => void {
   const mx = useMatrixClient();
   const setMobileSpacesOpen = useSetAtom(mobileSpacesOpenAtom);
-  const setGlobalFeedOpen = useSetAtom(globalFeedOpenAtom);
+  const setGlobalFeedOpen = useSetAtom(railSectionAtom);
   const setProfileUserId = useSetAtom(profileUserIdAtom);
   const setSpaceView = useSetAtom(selectedSpaceViewAtom);
   const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
@@ -28,7 +28,7 @@ function useOpenAcceptedInvite(): (room: Room) => void {
 
   return (room) => {
     setMobileSpacesOpen(false);
-    setGlobalFeedOpen(false);
+    setGlobalFeedOpen('messages');
     setProfileUserId(null);
     setSpaceView(null);
     const kind = classifyInvite(mx, room);

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSetAtom } from 'jotai';
 import { ClientEvent, RoomStateEvent, type MatrixEvent } from 'matrix-js-sdk';
-import { pendingJumpTargetAtom, selectedRoomIdAtom, selectedSpaceIdAtom, selectedSpaceViewAtom } from '../../app/state/selection';
+import { pendingJumpTargetAtom, selectedRoomIdAtom, selectedSpaceIdAtom, selectedSpaceViewAtom, railSectionAtom } from '../../app/state/selection';
 import { Icon } from '../../components/Icon';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import { CALENDAR_EVENT, readCalendarEvents, readOwnRsvp } from '../../matrix/calendar';
@@ -58,6 +58,7 @@ export function ReminderWatcher() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
   const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
+  const setRailSection = useSetAtom(railSectionAtom);
   const setSpaceView = useSetAtom(selectedSpaceViewAtom);
   const setPendingJump = useSetAtom(pendingJumpTargetAtom);
   const joinVoiceChannel = useJoinVoiceChannel();
@@ -175,10 +176,12 @@ export function ReminderWatcher() {
       setSpaceView(null);
       setSelectedSpaceId(findParentSpaceId(mx, toast.roomId));
       setSelectedRoomId(toast.roomId);
+      setRailSection('messages');
       setPendingJump({ roomId: toast.roomId, eventId: toast.eventId });
     } else {
       setSelectedSpaceId(toast.spaceId);
       setSelectedRoomId(null);
+      setRailSection('messages');
       setSpaceView('events');
     }
     dismiss(toast.key);

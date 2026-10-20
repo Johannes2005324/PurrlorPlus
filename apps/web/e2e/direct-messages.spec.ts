@@ -136,7 +136,7 @@ test('leaving a DM takes it off your list', async ({ browser }) => {
   const page = await context.newPage();
   await logIn(page, alice);
 
-  await role(page, 'server-rail-home').click();
+  await role(page, 'server-rail-messages').click();
   const row = role(page, 'channel-list-row').filter({ has: role(page, 'channel-list-item').filter({ hasText: bob.localpart }) });
   await expect(row).toBeVisible();
   await row.hover();

@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useSetAtom } from 'jotai';
 import type { Room } from 'matrix-js-sdk';
 import {
-  globalFeedOpenAtom,
+  railSectionAtom,
   profileUserIdAtom,
   selectedRoomIdAtom,
   selectedSpaceIdAtom,
@@ -19,7 +19,7 @@ export function useOpenFeedRoom(): (room: Room) => boolean {
   const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
   const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
   const setSpaceView = useSetAtom(selectedSpaceViewAtom);
-  const setGlobalFeedOpen = useSetAtom(globalFeedOpenAtom);
+  const setGlobalFeedOpen = useSetAtom(railSectionAtom);
   const setProfileUserId = useSetAtom(profileUserIdAtom);
 
   return useCallback(
@@ -28,7 +28,7 @@ export function useOpenFeedRoom(): (room: Room) => boolean {
       if (!marker) return false;
       if (marker.spaceId && !marker.profile) {
         setProfileUserId(null);
-        setGlobalFeedOpen(false);
+        setGlobalFeedOpen('messages');
         setSelectedSpaceId(marker.spaceId);
         setSelectedRoomId(null);
         setSpaceView('feed');

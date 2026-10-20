@@ -1,7 +1,7 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { useSetAtom } from 'jotai';
 import type { Room } from 'matrix-js-sdk';
-import { globalFeedOpenAtom, profileUserIdAtom, selectedRoomIdAtom, selectedSpaceIdAtom } from '../../app/state/selection';
+import { railSectionAtom, profileUserIdAtom, selectedRoomIdAtom, selectedSpaceIdAtom } from '../../app/state/selection';
 import { Avatar } from '../../components/Avatar';
 import { Icon, type IconName } from '../../components/Icon';
 import { Modal } from '../../components/Modal';
@@ -110,7 +110,7 @@ export function WelcomeGuide({ onClose }: { onClose: () => void }) {
   const openJoined = useOpenJoined();
   const setSpace = useSetAtom(selectedSpaceIdAtom);
   const setRoom = useSetAtom(selectedRoomIdAtom);
-  const setFeedOpen = useSetAtom(globalFeedOpenAtom);
+  const setFeedOpen = useSetAtom(railSectionAtom);
   const setProfile = useSetAtom(profileUserIdAtom);
   const index = STEPS.indexOf(step);
 
@@ -130,7 +130,7 @@ export function WelcomeGuide({ onClose }: { onClose: () => void }) {
         onCreated={(roomId) => {
           setCreating(false);
           finish(() => {
-            setFeedOpen(false);
+            setFeedOpen('messages');
             setProfile(null);
             setSpace(roomId);
             setRoom(null);
@@ -204,7 +204,7 @@ export function WelcomeGuide({ onClose }: { onClose: () => void }) {
                   className="nu-onboarding__link"
                   onClick={() =>
                     finish(() => {
-                      setFeedOpen(true);
+                      setFeedOpen('feed');
                       setProfile(mx.getUserId());
                     })
                   }

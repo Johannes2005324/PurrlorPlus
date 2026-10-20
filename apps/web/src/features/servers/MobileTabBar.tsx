@@ -5,9 +5,7 @@ import {
   globalFeedOpenAtom,
   openPostAtom,
   profileUserIdAtom,
-  selectedRoomIdAtom,
-  selectedSpaceIdAtom,
-  selectedSpaceViewAtom,
+  railSectionAtom,
   socialViewAtom,
 } from '../../app/state/selection';
 import { Avatar } from '../../components/Avatar';
@@ -43,8 +41,8 @@ function Count({ n }: { n: number }) {
 
 /**
  * The phone layout's way around, from the Ultimit mockup's phone screen: a bar along the bottom
- * with Home (your DMs), Spaces (every Space, as a grid: the server rail laid out flat), Feed,
- * Notify and You (your own profile). It stands in for the server rail, which on a phone took a
+ * with Home (the dashboard), Messages (your DMs and every Space, as a grid: the server rail laid
+ * out flat), Feed, Notify and You (your own profile). It stands in for the server rail, which on a phone took a
  * strip off every screen and had no way to your own profile at all. Only below the responsive
  * breakpoint (styles/base/frame.css); hidden while the keyboard is up.
  */
@@ -54,17 +52,14 @@ export function MobileTabBar() {
   const [spacesOpen, setSpacesOpen] = useAtom(mobileSpacesOpenAtom);
   const globalFeedOpen = useAtomValue(globalFeedOpenAtom);
   const socialView = useAtomValue(socialViewAtom);
-  const selectedSpaceId = useAtomValue(selectedSpaceIdAtom);
   const [profileUserId, setProfileUserId] = useAtom(profileUserIdAtom);
+  const [section, setSection] = useAtom(railSectionAtom);
   const setGlobalFeedOpen = useSetAtom(globalFeedOpenAtom);
-  const setSelectedSpaceId = useSetAtom(selectedSpaceIdAtom);
-  const setSelectedRoomId = useSetAtom(selectedRoomIdAtom);
-  const setSpaceView = useSetAtom(selectedSpaceViewAtom);
   const setOpenPost = useSetAtom(openPostAtom);
   const openSocial = useOpenSocial();
   const unreadNotifications = useAtomValue(unreadActivityCountAtom);
   const invites = useInvites();
-  // Home's count, worked out as the rail's Home tile does (ServerRail.tsx).
+  // Messages' count, worked out as the rail's Messages tile does (ServerRail.tsx).
   const spacelessRooms = useSpacelessRooms();
   const dmUnread = useUnreadSummary(spacelessRooms);
   const dmCounts = useDirectMessageUnreads(spacelessRooms, mx.getUserId() ?? '', (roomId) => describeRoomLevel(mx, roomId).effective !== 'all');
@@ -73,28 +68,33 @@ export function MobileTabBar() {
   const onProfile = !!profileUserId && profileUserId === me.userId;
   const onNotify = !spacesOpen && globalFeedOpen && socialView === 'notifications' && !profileUserId;
   const onFeed = !spacesOpen && globalFeedOpen && !onNotify && !profileUserId;
-  const onHome = !spacesOpen && !globalFeedOpen && !profileUserId && selectedSpaceId === null;
-  const onSpaces = spacesOpen || (!globalFeedOpen && !profileUserId && selectedSpaceId !== null);
+  const onHome = !spacesOpen && section === 'home' && !profileUserId;
+  const onMessages = spacesOpen || (section === 'messages' && !profileUserId);
 
   const tabs = [
     {
       key: 'home',
       label: 'Home',
-      aria: dmCount > 0 ? `Home: direct messages, ${dmCount} unread` : 'Home: direct messages',
+      aria: 'Home',
       active: onHome,
       icon: <Glyph name="home" />,
-      count: dmCount,
+      count: 0,
       go: () => {
         setSpacesOpen(false);
-        setGlobalFeedOpen(false);
         setProfileUserId(null);
         setOpenPost(null);
-        setSpaceView(null);
-        setSelectedSpaceId(null);
-        setSelectedRoomId(null);
+        setSection('home');
       },
     },
-    { key: 'spaces', label: 'Spaces', aria: 'Spaces', active: onSpaces, icon: <Glyph name="spaces" />, count: 0, go: () => setSpacesOpen(true) },
+    {
+      key: 'spaces',
+      label: 'Messages',
+      aria: dmCount > 0 ? `Messages, ${dmCount} unread` : 'Messages',
+      active: onMessages,
+      icon: <Glyph name="spaces" />,
+      count: dmCount,
+      go: () => setSpacesOpen(true),
+    },
     {
       key: 'feed',
       label: 'Feed',

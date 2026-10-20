@@ -67,7 +67,7 @@ test('Download my data: what you sent, decrypted, with your files, and nobody el
     (evs) => evs.some((e) => e.content.msgtype === 'm.image')
   );
   // A room in no Space is listed with the conversations, outside any Space.
-  await role(page, 'server-rail-home').click();
+  await role(page, 'server-rail-messages').click();
   await role(page, 'channel-list-item').filter({ hasText: secretRoom }).getByText(secretRoom, { exact: true }).click();
   await send(page, 'only alice can read this');
 
