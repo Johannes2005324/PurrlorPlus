@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { logIn, openApp, role } from './app';
+import { logIn, openApp, role, openOwnProfile } from './app';
 import { createUser } from './matrix';
 
 /**
@@ -40,7 +40,7 @@ async function addTracks(album: Locator, names: string[]): Promise<void> {
 
 async function openBuilder(page: Page): Promise<void> {
   await role(page, 'server-rail-global-feed').click();
-  await role(page, 'social-nav-profile').click();
+  await openOwnProfile(page);
   await role(page, 'profile-edit-page').click();
   await expect(role(page, 'page-editor')).toBeVisible();
 }

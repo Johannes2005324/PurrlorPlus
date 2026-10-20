@@ -85,3 +85,14 @@ export async function windowsSettled(page: Page): Promise<void> {
     document.getAnimations().every((a) => !(a instanceof CSSAnimation) || a.animationName !== 'nu-window-in' || a.playState === 'finished')
   );
 }
+
+/** Opens your own profile: the rail's Profile menu ("View profile"), or the phone's You tab. */
+export async function openOwnProfile(page: Page): Promise<void> {
+  const tab = role(page, 'mobile-tab-you');
+  if (await tab.isVisible()) {
+    await tab.click();
+    return;
+  }
+  await role(page, 'server-rail-profile').click();
+  await role(page, 'status-menu-view-profile').click();
+}

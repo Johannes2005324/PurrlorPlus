@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { logIn, role } from './app';
+import { logIn, role, openOwnProfile } from './app';
 import { api, createUser, eventually, uniqueName, type TestUser } from './matrix';
 
 /**
@@ -40,7 +40,7 @@ test('the owner sees their pageâ€™s effect, falling', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('nekous_effects', 'full'));
   const alice = await createUser('alice');
   await pageWithEffect(page, alice);
-  await role(page, 'social-nav-profile').click();
+  await openOwnProfile(page);
   await expect(role(page, 'profile-page-effects')).toBeVisible();
   const before = await particleTops(page);
   await page.waitForTimeout(1000);
@@ -51,7 +51,7 @@ test('with reduced motion the effect stays, standing still', async ({ browser })
   const alice = await createUser('alice');
   const page = await (await browser.newContext({ reducedMotion: 'reduce' })).newPage();
   await pageWithEffect(page, alice);
-  await role(page, 'social-nav-profile').click();
+  await openOwnProfile(page);
   await expect(role(page, 'profile-page-effects')).toBeVisible();
   await expect(role(page, 'profile-page-effects-toggle')).toBeVisible();
   const before = await particleTops(page);
@@ -66,7 +66,7 @@ test('with Safe effects the effect stays, standing still, and the wallpaper isnâ
   await pageWithEffect(page, alice);
   await expect(page.locator('html')).toHaveAttribute('data-nu-effects', 'safe');
   await expect(role(page, 'wallpaper')).toHaveCount(0);
-  await role(page, 'social-nav-profile').click();
+  await openOwnProfile(page);
   await expect(role(page, 'profile-page-effects')).toBeVisible();
   const before = await particleTops(page);
   expect(new Set(before).size).toBeGreaterThan(1);

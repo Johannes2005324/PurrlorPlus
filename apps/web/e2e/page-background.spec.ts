@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { logIn, role } from './app';
+import { logIn, role, openOwnProfile } from './app';
 import { HOMESERVER, api, createUser, eventually, uniqueName, type TestUser } from './matrix';
 
 /**
@@ -63,7 +63,7 @@ for (const fit of ['fixed', 'cover'] as const) {
       blocks: [{ id: 'hi', type: 'text', body: 'Welcome to my page' }],
     });
 
-    await role(page, 'social-nav-profile').click();
+    await openOwnProfile(page);
     const backdrop = role(page, 'profile-page-backdrop');
     await expect(backdrop).toBeVisible();
     // The posts have loaded: the profile is several screens long.
