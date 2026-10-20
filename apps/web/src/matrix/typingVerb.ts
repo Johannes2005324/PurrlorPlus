@@ -49,7 +49,12 @@ export function describeTyping(typers: { name: string; verb?: string }[]): strin
   if (typers.length === 2) {
     return a.verb === b.verb ? `${a.name} and ${b.name} are ${a.verb}…` : `${a.name} is ${a.verb} and ${b.name} is ${b.verb}…`;
   }
-  return `${typers.length} people are ${DEFAULT_TYPING_VERB}…`;
+  return describeTypingCount(typers.length);
+}
+
+/** "3 people are typing…": the short form, also for two when their names don't fit one line. */
+export function describeTypingCount(count: number): string {
+  return `${count} people are ${DEFAULT_TYPING_VERB}…`;
 }
 
 // Someone typing is exactly when their verb is needed, and they type in bursts — so it's read once

@@ -27,6 +27,7 @@ import { leaveDirectMessage } from '../../matrix/directMessages';
 import { CHANNEL_CATEGORIES_EVENT_TYPE, getChannelCategories, reorderCategoryChannels, type ChannelCategory } from '../../matrix/channelCategories';
 import { sameLayout, saveChannelLayout, type ChannelLayout } from '../../matrix/channelLayout';
 import { useChannelDrag } from './useChannelDrag';
+import { mobileColumnOpenAtom } from '../../app/state/mobile';
 import { useChannelCategories } from '../../matrix/hooks/useChannelCategories';
 import { useChannelType } from '../../matrix/hooks/useChannelType';
 import { useRoomEncrypted } from '../../matrix/hooks/useRoomEncrypted';
@@ -600,12 +601,23 @@ export function ChannelList() {
   // being one of them — otherwise the feed would stay on screen over a channel that now looks
   // selected in this list.
   const requestComposerFocus = useSetAtom(channelComposerFocusAtom);
+  // On a phone, picking something also closes this column (the Chat tab opens it over whatever was
+  // open). AppShell closes it when the choice changes; picking what's already open changes nothing,
+  // so that left the column up with the open channel highlighted and no way into it.
+  const setMobileColumnOpen = useSetAtom(mobileColumnOpenAtom);
   const selectChannel = (roomId: string) => {
     requestComposerFocus((n) => n + 1);
     setSelectedRoomId(roomId);
     setSpaceView(null);
     setGlobalFeedOpen(false);
     setProfileUserId(null);
+    setMobileColumnOpen(false);
+  };
+  const selectSpaceView = (view: 'news' | 'feed' | 'events') => {
+    setGlobalFeedOpen(false);
+    setProfileUserId(null);
+    setSpaceView(view);
+    setMobileColumnOpen(false);
   };
 
   // Chat's top level lists the Spaces; opening one (or going back) leaves nothing chosen in it.
@@ -888,11 +900,7 @@ export function ChannelList() {
                         .filter(Boolean)
                         .join(' ')}
                       data-nu-role="channel-list-news"
-                      onClick={() => {
-                        setGlobalFeedOpen(false);
-                        setProfileUserId(null);
-                        setSpaceView('news');
-                      }}
+                      onClick={() => selectSpaceView('news')}
                     >
                       <span className="nu-channel-list__item-icon" aria-hidden="true">
                         <Icon name="megaphone" size={18} />
@@ -912,11 +920,7 @@ export function ChannelList() {
                       .filter(Boolean)
                       .join(' ')}
                     data-nu-role="channel-list-feed"
-                    onClick={() => {
-                      setGlobalFeedOpen(false);
-                      setProfileUserId(null);
-                      setSpaceView('feed');
-                    }}
+                    onClick={() => selectSpaceView('feed')}
                   >
                     <span className="nu-channel-list__item-icon" aria-hidden="true">
                       <Icon name="posts" size={18} />
@@ -933,11 +937,7 @@ export function ChannelList() {
                     type="button"
                     className={spaceView === 'events' ? 'nu-channel-list__item nu-channel-list__item--active' : 'nu-channel-list__item'}
                     data-nu-role="channel-list-events"
-                    onClick={() => {
-                      setGlobalFeedOpen(false);
-                      setProfileUserId(null);
-                      setSpaceView('events');
-                    }}
+                    onClick={() => selectSpaceView('events')}
                   >
                     <span className="nu-channel-list__item-icon" aria-hidden="true">
                       <Icon name="calendar" size={18} />

@@ -1164,13 +1164,18 @@ export function MessageTimeline({ roomId, onReply }: { roomId: string; onReply: 
   // otherwise holds the anchored message in place. It used to skip every resize while a
   // scrollback was in flight — and opening an image-heavy room almost always starts one (few
   // messages → thin-timeline backfill) — so the images loading meanwhile pushed the view up.
+  // The timeline's own box too: on a phone the keyboard coming up (useVisualViewport.ts) or the
+  // composer growing a line shrinks it without any scroll event, which left the newest messages,
+  // your own just sent among them, hidden below the bottom edge.
   useEffect(() => {
+    const container = containerRef.current;
     const content = contentRef.current;
-    if (!content) return undefined;
+    if (!container || !content) return undefined;
 
     // keepScrollPosition only reads refs, so this first render's copy stays correct.
     const observer = new ResizeObserver(() => keepScrollPosition());
 
+    observer.observe(container);
     observer.observe(content);
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,4 +1,5 @@
 .nu-typing-indicator {
+  flex: none;
   height: 20px;
   padding: 0 var(--nu-space-4);
   font-size: var(--nu-font-size-sm);
@@ -10,7 +11,17 @@
   overflow: hidden;
 }
 
+/* One line, always: two long names (or two people's own typing words) wrapped onto a second line
+   the 20px strip cut in half. Too long for the width, it ends in "…" and the dots stay. */
+.nu-typing-indicator__text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .nu-typing-indicator__dots {
+  flex: none;
   display: flex;
   gap: 3px;
 }

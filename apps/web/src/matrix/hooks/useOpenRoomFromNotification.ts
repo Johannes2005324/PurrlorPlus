@@ -1,6 +1,15 @@
 import { useEffect } from 'react';
 import { useSetAtom } from 'jotai';
-import { profileUserIdAtom, selectedRoomIdAtom, selectedSpaceIdAtom, railSectionAtom } from '../../app/state/selection';
+import { mobileColumnOpenAtom } from '../../app/state/mobile';
+import {
+  globalFeedOpenAtom,
+  openPostAtom,
+  profileUserIdAtom,
+  railSectionAtom,
+  selectedRoomIdAtom,
+  selectedSpaceIdAtom,
+  selectedSpaceViewAtom,
+} from '../../app/state/selection';
 import { readMentionInvite } from '../mentionInvites';
 import { useMatrixClient } from '../MatrixClientContext';
 import { getParentSpace } from '../voice';
@@ -20,6 +29,10 @@ export function useOpenRoomFromNotification(): void {
   const setRailSection = useSetAtom(railSectionAtom);
   const openFeedRoom = useOpenFeedRoom();
   const setProfileUserId = useSetAtom(profileUserIdAtom);
+  const setGlobalFeedOpen = useSetAtom(globalFeedOpenAtom);
+  const setOpenPost = useSetAtom(openPostAtom);
+  const setSpaceView = useSetAtom(selectedSpaceViewAtom);
+  const setMobileColumnOpen = useSetAtom(mobileColumnOpenAtom);
 
   useEffect(() => {
     const openRoom = (roomId: string) => {
@@ -33,6 +46,13 @@ export function useOpenRoomFromNotification(): void {
         setProfileUserId(mention.inviter);
         return;
       }
+      // Off whatever was showing over the chat (the feed, a profile, a post, a Space's Posts, the
+      // phone's Chat column): the room was chosen underneath it and never came into view.
+      setGlobalFeedOpen(false);
+      setProfileUserId(null);
+      setOpenPost(null);
+      setSpaceView(null);
+      setMobileColumnOpen(false);
       setSelectedSpaceId(getParentSpace(mx, room)?.roomId ?? null);
       setSelectedRoomId(roomId);
       setRailSection('messages');
@@ -55,5 +75,16 @@ export function useOpenRoomFromNotification(): void {
     };
     navigator.serviceWorker.addEventListener('message', handleMessage);
     return () => navigator.serviceWorker.removeEventListener('message', handleMessage);
-  }, [mx, setSelectedSpaceId, setSelectedRoomId, openFeedRoom, setProfileUserId, setRailSection]);
+  }, [
+    mx,
+    setSelectedSpaceId,
+    setSelectedRoomId,
+    openFeedRoom,
+    setProfileUserId,
+    setRailSection,
+    setGlobalFeedOpen,
+    setOpenPost,
+    setSpaceView,
+    setMobileColumnOpen,
+  ]);
 }

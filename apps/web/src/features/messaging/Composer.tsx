@@ -608,6 +608,9 @@ export function Composer({
               title={uploading ? 'Uploading…' : 'Send'}
               aria-label={uploading ? 'Uploading' : 'Send'}
               disabled={(!text.trim() && !attachment) || sending || (slowmodeWait > 0 && !text.trim().startsWith('/'))}
+              // Keeps the caret in the box: on a phone, tapping Send took focus off it, so the
+              // keyboard dropped mid-send and the timeline jumped about under your message.
+              onMouseDown={(evt) => evt.preventDefault()}
             >
               {uploading ? <span className="nu-composer__send-spinner" aria-hidden="true" /> : <Icon name="arrowUp" size={18} />}
             </button>
