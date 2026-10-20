@@ -2,7 +2,10 @@
 
 ## Roadmap and model split
 
-The current plan is the Claude Docs doc "Purrlor: link embeds for messages and posts" (2026-10-04):
+The newest plan is the Claude Docs doc "Purrlor: WATCH and AUDIO" (2026-10-19), ON HOLD since 2026-10-19 (nothing built yet, start it only when asked): a YouTube-style WATCH and a Spotify-style AUDIO on the rail, built from profile pages. Live streaming is paused (its notes are in the doc). It builds on the `rail-sections` branch (Home, Feed and Chat on the rail; pushed, not merged into `master`, also on hold):
+https://claude.ai/code/artifact/e757fa66-41eb-42c7-964e-037b3ca376df
+
+The previous plan is the Claude Docs doc "Purrlor: link embeds for messages and posts" (2026-10-04):
 https://claude.ai/code/artifact/be32ec17-9535-4319-a37b-3904b785d48c
 
 Its "Work split" table assigns each task a model and has a Status column. "start sonnet work" / "start opus work" means: read that doc first (the Model dropdowns, checks, open questions and Verify first results may have changed), then do every task assigned to that model, on a new branch off `master`. Opus's tasks write `docs/embeds.md`, the contract the Sonnet client tasks build on: read it (and `docs/posts.md`, `docs/federation.md`, `docs/public-web.md`) first. All eight tasks are done and merged into `master` (2026-10-04); what's left are its "Verify first" checks against real sites from the live server.
