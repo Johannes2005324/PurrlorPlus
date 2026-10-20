@@ -1,8 +1,20 @@
 import { useEffect, useRef } from 'react';
-import { ClientEvent, NotificationCountType } from 'matrix-js-sdk';
+import { ClientEvent, NotificationCountType, type Room } from 'matrix-js-sdk';
 import { useMatrixClient } from '../../matrix/MatrixClientContext';
 import { listSpacelessRooms } from '../../matrix/spacelessRooms';
 import { desktopBridge } from '../../desktop/desktopBridge';
+import { readChannelType } from '../../matrix/channelType';
+import { isBackgroundRoom } from '../../matrix/backgroundRooms';
+
+/**
+ * Whether a room's counts can be seen and cleared in the app. Feed rooms are read as posts, never
+ * as a timeline, so nothing sends them a read receipt (MessageTimeline.tsx does that), and a post
+ * that mentions you is shown and read in Notify instead; background rooms aren't shown at all.
+ * Their server counts would sit on the badge for good, with nothing in the app to show or clear.
+ */
+function isShownAsChat(room: Room): boolean {
+  return !room.isSpaceRoom() && readChannelType(room) !== 'feed' && !isBackgroundRoom(room);
+}
 
 /**
  * The count on the app's icon: the desktop app's taskbar button, or an installed app's icon
@@ -24,7 +36,7 @@ export function AppBadge() {
       const chats = new Set(listSpacelessRooms(mx).map((room) => room.roomId));
       let count = 0;
       for (const room of mx.getRooms()) {
-        if (room.getMyMembership() !== 'join') continue;
+        if (room.getMyMembership() !== 'join' || !isShownAsChat(room)) continue;
         count += room.getUnreadNotificationCount(chats.has(room.roomId) ? NotificationCountType.Total : NotificationCountType.Highlight);
       }
       if (count === shown.current) return;
