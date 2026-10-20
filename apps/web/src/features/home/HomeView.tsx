@@ -23,7 +23,9 @@ import { listChildRooms } from '../../matrix/hooks/useSpaceRooms';
 import { useDirectMessageUnreads, useUnreadSummary } from '../../matrix/hooks/useUnreadCounts';
 import { describeRoomLevel } from '../../matrix/notificationSettings';
 import type { LiveVoiceChannel } from '../../matrix/liveVoice';
+import { isDemoMode } from '../../demo/demoMode';
 import { useJoinVoiceChannel } from '../calendar/useJoinVoiceChannel';
+import { NoSpacesYet, useInNoSpace } from '../onboarding/WelcomeGuideHost';
 import { GlobalPostList } from '../feed/GlobalPostList';
 import { useComposerTargets } from '../feed/useComposerTargets';
 import { useOpenSocial } from '../feed/useOpenSocial';
@@ -209,6 +211,8 @@ export function HomeView() {
   const following = useFollowingPosts();
   const live = useLiveVoiceChannels(true);
   const unread = useUnreadRooms();
+  // Someone in no Space yet gets the ways in (joining, creating) rather than a quiet dashboard.
+  const noSpaces = useInNoSpace() && !isDemoMode();
   const empty = live.length === 0 && following.posts.length === 0 && unread.length === 0;
 
   return (
@@ -222,7 +226,8 @@ export function HomeView() {
         <LiveNow live={live} />
         <Following posts={following.posts} targets={following.targets} />
         <UnreadMessages unread={unread} />
-        {empty && (
+        {empty && noSpaces && <NoSpacesYet />}
+        {empty && !noSpaces && (
           <div className="nu-home__empty" data-nu-role="home-empty">
             <Icon name="paw" size={40} className="nu-main-pane__empty-icon" />
             <p className="nu-home__empty-title">{following.loading ? 'Looking around…' : 'All quiet for now'}</p>

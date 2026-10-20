@@ -21,6 +21,8 @@ test('an encrypted chat between two browsers', async ({ browser }) => {
   await Promise.all([logIn(alicePage, alice), logIn(bobPage, bob)]);
 
   for (const page of [alicePage, bobPage]) {
+    // The app opens on Home; the conversation is in Messages.
+    await role(page, 'server-rail-messages').click();
     await role(page, 'channel-list-item').filter({ hasText: name }).getByText(name, { exact: true }).click();
     await expect(role(page, 'composer-input')).toBeVisible();
   }
