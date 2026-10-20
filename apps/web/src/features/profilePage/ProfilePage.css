@@ -1194,6 +1194,33 @@ body:has(.nu-music-player--bar) .nu-floating-song {
   bottom: calc(var(--nu-space-4) + 72px);
 }
 
+/* On a phone, above the bottom tab bar (MobileTabBar.css) rather than over it. Portaled out of the
+   shell, so its --nu-mobile-tabs-height isn't inherited here: the same 60px as frame.css. */
+@media (max-width: 900px) {
+  body:has(.nu-mobile-tabs) .nu-floating-song {
+    bottom: calc(env(safe-area-inset-bottom) + 60px + var(--nu-space-2));
+  }
+
+  html[data-nu-keyboard] body:has(.nu-mobile-tabs) .nu-floating-song {
+    bottom: var(--nu-space-2);
+  }
+}
+
+/* The profile it belongs to is hidden (FloatingSong.tsx): so is the window, though it keeps playing. */
+.nu-floating-song--away {
+  display: none;
+}
+
+/* Stays in the page to say whether it's showing: out of the layout and invisible, but a box with
+   some size, so it shrinks to nothing (and ResizeObserver says so) once the page is hidden. */
+.nu-floating-song__marker {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* YouTube's player has to stay at least 200px tall. */
 .nu-floating-song--video {
   width: min(380px, calc(100vw - 2 * var(--nu-space-4)));
