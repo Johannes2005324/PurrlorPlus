@@ -340,6 +340,11 @@ from the app.
 
 ### 5.3 Timeline events
 
+**`xyz.nekous.story`**: a story, in the owner's profile feed only, with a post's content (text and
+at most one item under `xyz.nekous.attachments`). Readers show it for 24 hours from
+`origin_server_ts`, only if sent by the room's owner; the owner's client redacts it after that. See
+`docs/stories.md`.
+
 **`xyz.nekous.post`**: a post, sent only by the feed's owner (power level 100 for this type). In a
 Space feed, the owner's client also keeps the Space's moderators at power level 50 (redact, kick)
 and every state event at 100; see `docs/posts.md`, "The Space's authority over feeds".
@@ -409,6 +414,7 @@ Un-liking redacts the reaction. One like is counted per person.
 | `xyz.nekous.profile_room` | `{ "roomId": "!…" }`. Your profile feed. |
 | `xyz.nekous.private_posts` | `{ "items": [ { "id", "spaceId", "body", "createdAt", "attachments"? } ] }`. "Only me" posts; never in any room. |
 | `xyz.nekous.follows` | `{ "users": ["@…"], "spaces": ["!…"] }`. Never shown to anyone else. |
+| `xyz.nekous.stories_seen` | `{ "seen": { "<eventId>": <story ts> } }`. Stories you've watched; entries drop out after 24 hours. |
 | `xyz.nekous.post_notifications` | `{ "comments": true, "likes": true }`. Both default to on. |
 | `xyz.nekous.notification_settings` | `{ "spaces": { "<spaceId>": "<level>" }, "rooms": { "<roomId>": "<level>" } }`, level `all`, `mentions` or `nothing`. A room's own level beats its Space's. See [notification-settings.md](notification-settings.md). |
 | `xyz.nekous.push_gateway` | `{ "url": "https://push.DOMAIN" }` |

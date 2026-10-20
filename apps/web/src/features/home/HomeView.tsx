@@ -19,6 +19,7 @@ import { useGlobalFeed } from '../../matrix/hooks/useGlobalFeed';
 import { useLiveVoiceChannels } from '../../matrix/hooks/useLiveVoiceChannels';
 import { useSpacelessRooms } from '../../matrix/hooks/useSpacelessRooms';
 import { useSpaces } from '../../matrix/hooks/useSpaces';
+import { useStories } from '../../matrix/hooks/useStories';
 import { listChildRooms } from '../../matrix/hooks/useSpaceRooms';
 import { useDirectMessageUnreads, useUnreadSummary } from '../../matrix/hooks/useUnreadCounts';
 import { describeRoomLevel } from '../../matrix/notificationSettings';
@@ -29,6 +30,7 @@ import { NoSpacesYet, useInNoSpace } from '../onboarding/WelcomeGuideHost';
 import { GlobalPostList } from '../feed/GlobalPostList';
 import { useComposerTargets } from '../feed/useComposerTargets';
 import { useOpenSocial } from '../feed/useOpenSocial';
+import { StoriesBar } from '../stories/StoriesBar';
 import './HomeView.css';
 
 /** Participant avatars shown on a live card before "+N". */
@@ -179,7 +181,7 @@ function useFollowingPosts() {
   const posts = followsNothing
     ? []
     : filterPosts(feed.posts, { kind: 'following', users: follows.users, spaces: follows.spaces }).slice(0, MAX_POSTS);
-  return { posts, targets, loading: feed.loading };
+  return { posts, targets, loading: feed.loading, follows };
 }
 
 function Following({ posts, targets }: { posts: ReturnType<typeof useFollowingPosts>['posts']; targets: ReturnType<typeof useFollowingPosts>['targets'] }) {
@@ -203,7 +205,7 @@ function Following({ posts, targets }: { posts: ReturnType<typeof useFollowingPo
 }
 
 /**
- * The Home dashboard, "Here's what's happening": voice channels with people in them, the newest
+ * The Home dashboard, "Here's what's happening": stories from people you follow, voice channels with people in them, the newest
  * posts from people you follow, and conversations waiting on you. Each section is left out when
  * it's empty, and if all are, a friendly note stands in.
  */
@@ -211,6 +213,8 @@ export function HomeView() {
   const following = useFollowingPosts();
   const live = useLiveVoiceChannels(true);
   const unread = useUnreadRooms();
+  const showStories = !isDemoMode();
+  const stories = useStories(showStories, following.follows.users);
   // Someone in no Space yet gets the ways in (joining, creating) rather than a quiet dashboard.
   const noSpaces = useInNoSpace() && !isDemoMode();
   const empty = live.length === 0 && following.posts.length === 0 && unread.length === 0;
@@ -223,6 +227,7 @@ export function HomeView() {
       </div>
       <div className="nu-home" data-nu-role="home">
         <h2 className="nu-home__title">Here’s what’s happening</h2>
+        {showStories && <StoriesBar stories={stories} />}
         <LiveNow live={live} />
         <Following posts={following.posts} targets={following.targets} />
         <UnreadMessages unread={unread} />

@@ -8,6 +8,7 @@ See [`docs/api.md`](docs/api.md) for the API reference (the services' HTTP APIs 
 extension Purrlor defines), [`docs/theming.md`](docs/theming.md) for the CSS theming contract,
 [`docs/voice-architecture.md`](docs/voice-architecture.md) for how voice/video calls work under the
 hood, [`docs/posts.md`](docs/posts.md) for posts, comments and the global feed,
+[`docs/stories.md`](docs/stories.md) for 24-hour stories,
 [`docs/push-notifications.md`](docs/push-notifications.md) for background push,
 [`docs/notification-settings.md`](docs/notification-settings.md) for per-channel and per-Space
 notification levels, [`docs/channel-permissions.md`](docs/channel-permissions.md) for

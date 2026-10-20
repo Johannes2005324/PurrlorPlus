@@ -7,6 +7,7 @@ import { unpublishProfilePage } from './profilePageStore';
 import { disableBackgroundPush, readPushGatewayUrl } from './push';
 import { readPublicWebEnabled, setPublicWebEnabled } from './publicWebSwitch';
 import { clearGatewayReminders } from './reminderPush';
+import { STORY_EVENT_TYPE } from './stories';
 
 /**
  * Deleting your account (Account Settings → Your data). Matrix calls it deactivating: the account
@@ -81,7 +82,7 @@ async function deleteAllPosts(mx: MatrixClient, onProgress: (progress: DeletePro
   const roomIds = [...new Set([getOwnProfileRoomId(mx), ...listOwnFeedRoomIds(mx)].filter((id): id is string => !!id))];
   const targets: { roomId: string; eventId: string }[] = [];
   for (const roomId of roomIds) {
-    const events = await readOwnEvents(mx, roomId, { types: [POST_EVENT_TYPE], signal }).catch(() => []);
+    const events = await readOwnEvents(mx, roomId, { types: [POST_EVENT_TYPE, STORY_EVENT_TYPE], signal }).catch(() => []);
     for (const event of events) {
       const eventId = event.getId();
       if (eventId && !isRedacted(event)) targets.push({ roomId, eventId });

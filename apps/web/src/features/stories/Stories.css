@@ -1,0 +1,306 @@
+/* The stories row on Home. */
+.nu-stories__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--nu-space-3);
+  overflow-x: auto;
+  padding-bottom: var(--nu-space-1);
+  scrollbar-width: thin;
+}
+
+.nu-stories__own {
+  position: relative;
+  flex: none;
+}
+
+.nu-stories__bubble {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  flex: none;
+  width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--nu-space-1);
+  cursor: pointer;
+  color: var(--nu-color-text-secondary);
+}
+
+.nu-stories__ring {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--nu-radius-full);
+  background: var(--nu-color-border);
+}
+
+.nu-stories__ring > * {
+  box-shadow: 0 0 0 2px var(--nu-color-bg-primary);
+  border-radius: var(--nu-radius-full);
+}
+
+.nu-stories__bubble--unseen .nu-stories__ring {
+  background: linear-gradient(135deg, var(--nu-color-accent), var(--nu-color-accent-hover));
+}
+
+.nu-stories__bubble--unseen {
+  color: var(--nu-color-text-primary);
+}
+
+.nu-stories__bubble:focus-visible .nu-stories__ring {
+  outline: 2px solid var(--nu-color-accent);
+  outline-offset: 2px;
+}
+
+.nu-stories__name {
+  max-width: 100%;
+  font-size: var(--nu-font-size-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nu-stories__add {
+  position: absolute;
+  top: 44px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 2px solid var(--nu-color-bg-primary);
+  border-radius: var(--nu-radius-full);
+  background: var(--nu-color-accent);
+  color: var(--nu-color-on-accent);
+  cursor: pointer;
+}
+
+.nu-stories__hint {
+  align-self: center;
+  margin: 0;
+  font-size: var(--nu-font-size-sm);
+  color: var(--nu-color-text-muted);
+}
+
+/* Making one. */
+.nu-story-composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nu-space-3);
+}
+
+.nu-story-composer__pick {
+  appearance: none;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nu-space-2);
+  min-height: 160px;
+  border: 2px dashed var(--nu-color-border-strong);
+  border-radius: var(--nu-radius-md);
+  background: var(--nu-color-bg-secondary);
+  color: var(--nu-color-text-secondary);
+  cursor: pointer;
+}
+
+.nu-story-composer__pick:hover {
+  border-color: var(--nu-color-accent);
+  color: var(--nu-color-text-primary);
+}
+
+.nu-story-composer__preview {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  border-radius: var(--nu-radius-md);
+  background: #000;
+  overflow: hidden;
+}
+
+.nu-story-composer__media {
+  max-width: 100%;
+  max-height: 50vh;
+  object-fit: contain;
+}
+
+.nu-story-composer__remove {
+  position: absolute;
+  top: var(--nu-space-2);
+  right: var(--nu-space-2);
+  display: inline-flex;
+  padding: 6px;
+  border: 0;
+  border-radius: var(--nu-radius-full);
+  background: rgb(0 0 0 / 60%);
+  color: #fff;
+  cursor: pointer;
+}
+
+.nu-story-composer__caption {
+  resize: vertical;
+  font: inherit;
+  padding: var(--nu-space-2);
+  border: 1px solid var(--nu-color-border);
+  border-radius: var(--nu-radius-sm);
+  background: var(--nu-color-bg-secondary);
+  color: var(--nu-color-text-primary);
+}
+
+.nu-story-composer__note {
+  margin: 0;
+  font-size: var(--nu-font-size-xs);
+  color: var(--nu-color-text-muted);
+}
+
+.nu-story-composer__error {
+  margin: 0;
+  font-size: var(--nu-font-size-sm);
+  color: var(--nu-color-danger);
+}
+
+.nu-story-composer__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--nu-space-2);
+}
+
+/* Watching. Always dark: it's a picture on black, whatever the theme. */
+.nu-story-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 92%);
+}
+
+.nu-story-viewer__frame {
+  position: relative;
+  width: min(100vw, calc(100dvh * 9 / 16), 480px);
+  height: min(100dvh, 854px);
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  color: #fff;
+  overflow: hidden;
+}
+
+@media (min-width: 600px) {
+  .nu-story-viewer__frame {
+    border-radius: var(--nu-radius-lg);
+  }
+}
+
+.nu-story-viewer__bars {
+  position: absolute;
+  inset: var(--nu-space-2) var(--nu-space-2) auto;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+}
+
+.nu-story-viewer__bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 35%);
+  overflow: hidden;
+}
+
+.nu-story-viewer__bar-fill {
+  display: block;
+  height: 100%;
+  background: #fff;
+}
+
+.nu-story-viewer__header {
+  position: absolute;
+  inset: calc(var(--nu-space-2) + 10px) var(--nu-space-2) auto;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--nu-space-2);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 70%);
+}
+
+.nu-story-viewer__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nu-story-viewer__time {
+  flex: 1;
+  font-size: var(--nu-font-size-sm);
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.nu-story-viewer__button {
+  display: inline-flex;
+  padding: 6px;
+  border: 0;
+  border-radius: var(--nu-radius-full);
+  background: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.nu-story-viewer__button:hover {
+  background: rgb(255 255 255 / 15%);
+}
+
+.nu-story-viewer__stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  cursor: pointer;
+}
+
+.nu-story-viewer__stage--text {
+  padding: var(--nu-space-6) var(--nu-space-5);
+  background: linear-gradient(160deg, var(--nu-color-accent), #1b1030);
+}
+
+.nu-story-viewer__media {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.nu-story-viewer__media--loading {
+  background: rgb(255 255 255 / 6%);
+}
+
+.nu-story-viewer__caption {
+  position: absolute;
+  inset: auto var(--nu-space-3) var(--nu-space-5);
+  margin: 0;
+  padding: var(--nu-space-2) var(--nu-space-3);
+  border-radius: var(--nu-radius-md);
+  background: rgb(0 0 0 / 55%);
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.nu-story-viewer__text {
+  margin: 0;
+  font-size: var(--nu-font-size-xl);
+  font-weight: 600;
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
