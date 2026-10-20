@@ -17,6 +17,7 @@ const B = { hs: 'http://127.0.0.1:6211', app: 'http://127.0.0.1:6212', server: '
 const REG = 'fed-registration-token';
 const PROFILE = 'xyz.nekous.profile';
 const PROFILE_KEY = 'xyz.nekous.profile_room';
+const STORY = 'xyz.nekous.story';
 
 const [bootstrapA, bootstrapB] = process.argv.slice(2);
 if (!bootstrapA || !bootstrapB) {
@@ -287,6 +288,50 @@ async function main() {
   check('alice now reads them too', (await readable(alice, other.room)).ok);
   const outsider = await call(A.app, undefined, 'POST', '/api/public/peers/join', { openid_token: openid, user_id: '@x:elsewhere.test', room_id: other.room });
   check('the on-demand join refuses someone on a server that isn’t a peer', outsider.status === 400 || outsider.status === 403, outsider.text);
+
+  console.log('Stories');
+  // As the app posts one (apps/web/src/matrix/stories.ts): the story type gated to the owner, then
+  // an xyz.nekous.story with a picture. Both of B's profiles are readable on A by now.
+  const levels = await as(bob)('GET', `/_matrix/client/v3/rooms/${enc(bobProfile.roomId)}/state/m.room.power_levels/`);
+  const gate = await as(bob)('PUT', `/_matrix/client/v3/rooms/${enc(bobProfile.roomId)}/state/m.room.power_levels/`, {
+    ...levels.json,
+    events: { ...(levels.json?.events ?? {}), [STORY]: 100 },
+  });
+  check('bob gates stories to himself', gate.ok, gate.text);
+  const storyPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  const storyUpload = await fetch(`${bob.hs}/_matrix/media/v3/upload?filename=story.png`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${bob.token}`, 'Content-Type': 'image/png' },
+    body: storyPng,
+  }).then((res) => res.json());
+  const storyContent = {
+    body: 'a story from B',
+    'xyz.nekous.attachments': [{ kind: 'image', url: storyUpload.content_uri, name: 'story.png', info: { mimetype: 'image/png', size: storyPng.length, w: 1, h: 1 } }],
+  };
+  const story = await as(bob)('PUT', `/_matrix/client/v3/rooms/${enc(bobProfile.roomId)}/send/${STORY}/st${Date.now()}`, storyContent);
+  check('bob posts a story on B', story.ok, story.text);
+  // What the app asks: the newest story events, filtered server-side.
+  const storiesOnA = () =>
+    as(alice)('GET', `/_matrix/client/v3/rooms/${enc(bobProfile.roomId)}/messages?dir=b&limit=50&filter=${enc(JSON.stringify({ types: [STORY] }))}`);
+  const seenOnA = await until('bob’s story to reach A', async () => {
+    const res = await storiesOnA();
+    return (res.json?.chunk ?? []).find((event) => event.event_id === story.json?.event_id);
+  });
+  check('alice reads bob’s story on A, from bob, with its picture', seenOnA?.sender === bob.userId && seenOnA?.content?.body === 'a story from B' && seenOnA?.content?.['xyz.nekous.attachments']?.[0]?.url === storyUpload.content_uri, JSON.stringify(seenOnA).slice(0, 200));
+  const [mediaServer, mediaId] = String(storyUpload.content_uri).replace('mxc://', '').split('/');
+  const media = await fetch(`${alice.hs}/_matrix/client/v1/media/download/${mediaServer}/${mediaId}`, { headers: { Authorization: `Bearer ${alice.token}` } });
+  check('and its picture, through A', media.ok && Buffer.from(await media.arrayBuffer()).equals(storyPng), String(media.status));
+  await as(alice)('POST', `/_matrix/client/v3/join/${enc(bobProfile.roomId)}?server_name=${B.server}`, {});
+  const forged = await as(alice)('PUT', `/_matrix/client/v3/rooms/${enc(bobProfile.roomId)}/send/${STORY}/f${Date.now()}`, { body: 'not bob' });
+  check('alice can’t post a story in bob’s room', !forged.ok, `${forged.status}`);
+  const removed = await as(bob)('PUT', `/_matrix/client/v3/rooms/${enc(bobProfile.roomId)}/redact/${enc(story.json?.event_id)}/r${Date.now()}`, { reason: 'Story expired' });
+  check('bob deletes it', removed.ok, removed.text);
+  const goneOnA = await until('the deletion to reach A', async () => {
+    const res = await storiesOnA();
+    const event = (res.json?.chunk ?? []).find((item) => item.event_id === story.json?.event_id);
+    return event && !event.content?.body ? event : undefined;
+  });
+  check('and it’s gone on A too', !!goneOnA);
 
   console.log('Emotes and stickers');
   // Someone from A slips into B's library (its join rule is public) and writes a pack of their own.

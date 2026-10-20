@@ -43,6 +43,18 @@ them on opening, every two minutes while open, and right after you post or delet
 
 Only followed **people** have stories in the row; following a Space doesn't add anyone.
 
+## Federation
+
+Stories need nothing of their own to cross instances (`docs/federation.md`). A followed person on
+an approved peer is found and read by the same `loadUserProfileSource` as the Following timeline:
+if this homeserver isn't in their profile room yet, the token server's bot joins it on request,
+and from then on their stories arrive live like their posts. Their media comes through this
+homeserver's media route; their deletions (including expiry) federate as redactions.
+
+`deploy/test/federation/scenario.mjs` checks it between two instances: a person on B gates and
+posts a story with a picture, someone on A reads it from the right sender with its picture, can't
+post a story in that room (403), and sees its deletion.
+
 ## Seen
 
 Which stories you've watched is account data (`xyz.nekous.stories_seen`, event ID → the story's
