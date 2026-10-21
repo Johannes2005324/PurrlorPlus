@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- The Windows 10 SDK version is for Windows notifications (Toasts.cs); PurrlorPlus needs Windows 10 1809 or later. -->
+    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>purrlor.ico</ApplicationIcon>
+    <AssemblyName>PurrlorPlus</AssemblyName>
+    <RootNamespace>PurrlorPlus</RootNamespace>
+    <Platforms>x64</Platforms>
+    <!-- The one version number: Build-PurrlorPlus.ps1 reads it for the installer and the release. -->
+    <Version>0.7.0</Version>
+    <Product>PurrlorPlus</Product>
+    <Company>MeowOps</Company>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+  <!-- The public key is supplied by the release workflow or the local setup script. -->
+  <PropertyGroup>
+    <PurrlorPlusUpdatePublicKey Condition="'$(PurrlorPlusUpdatePublicKey)' == '' and Exists('$(MSBuildProjectDirectory)/UpdatePublicKey.txt')">$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/UpdatePublicKey.txt').Trim())</PurrlorPlusUpdatePublicKey>
+  </PropertyGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="UpdateRepository" Value="Johannes2005324/PurrlorPlus" />
+    <AssemblyMetadata Include="UpdatePublicKey" Value="$(PurrlorPlusUpdatePublicKey)" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3296.44" />
+    <Content Include="purrlor.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Extensions\*.js" />
+  </ItemGroup>
+</Project>

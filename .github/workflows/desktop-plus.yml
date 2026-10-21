@@ -1,0 +1,79 @@
+name: Purrlor Plus
+
+# Builds the Windows desktop app (apps/desktop-plus) and its installer. Pushing a tag named
+# plus-vX.Y.Z (matching <Version> in PurrlorPlus.csproj) also publishes it as a GitHub release.
+on:
+  push:
+    branches: [master, main]
+    tags: ['plus-v*']
+    paths: ['apps/desktop-plus/**', '.github/workflows/desktop-plus.yml']
+  pull_request:
+    paths: ['apps/desktop-plus/**', '.github/workflows/desktop-plus.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: windows installer
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      PurrlorPlusUpdatePublicKey: ${{ vars.PLUS_UPDATE_PUBLIC_KEY }}
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: apps/desktop-plus
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install NSIS
+        run: |
+          if (!(Get-Command makensis.exe -ErrorAction SilentlyContinue) -and !(Test-Path "C:\Program Files (x86)\NSIS\makensis.exe")) {
+            choco install nsis -y --no-progress
+          }
+      - name: Check the tag matches the app version
+        if: startsWith(github.ref, 'refs/tags/plus-v')
+        run: |
+          $version = ([xml](Get-Content PurrlorPlus/PurrlorPlus.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          if ("plus-v$version" -ne "${{ github.ref_name }}") { throw "Tag ${{ github.ref_name }} doesn't match PurrlorPlus.csproj version $version" }
+      - name: Check public update key
+        if: startsWith(github.ref, 'refs/tags/plus-v')
+        run: |
+          if (-not $env:PurrlorPlusUpdatePublicKey) { throw "PLUS_UPDATE_PUBLIC_KEY fehlt. Zuerst Setup-Updates.bat ausführen." }
+      - name: Build
+        run: ./Build-PurrlorPlus.ps1
+      # Auto-update (apps/desktop-plus/PurrlorPlus/Updater.cs) runs only an installer signed with this key.
+      # Signed: the version and the installer's SHA-256, so an old installer can't pose as a new one.
+      - name: Sign the installer for auto-update
+        if: startsWith(github.ref, 'refs/tags/plus-v')
+        env:
+          SIGNING_KEY: ${{ secrets.PLUS_UPDATE_SIGNING_KEY }}
+        run: |
+          if (-not $env:SIGNING_KEY) { throw "PLUS_UPDATE_SIGNING_KEY isn't set: installed apps would refuse this update" }
+          $version = "${{ github.ref_name }}".Substring("plus-v".Length)
+          $hash = (Get-FileHash dist/PurrlorPlus-Setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $message = [Text.Encoding]::UTF8.GetBytes("purrlorplus-desktop-update`n$version`n$hash`n")
+          $key = [Security.Cryptography.ECDsa]::Create()
+          $key.ImportFromPem($env:SIGNING_KEY)
+          $expected = [Convert]::ToBase64String($key.ExportSubjectPublicKeyInfo())
+          if ($expected -cne $env:PurrlorPlusUpdatePublicKey.Trim()) { throw "Öffentlicher und privater Aktualisierungsschlüssel passen nicht zusammen." }
+          $signature = $key.SignData($message, [Security.Cryptography.HashAlgorithmName]::SHA256)
+          [IO.File]::WriteAllText("$PWD/dist/PurrlorPlus-Setup.exe.sig", [Convert]::ToBase64String($signature))
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PurrlorPlus-Setup
+          path: apps/desktop-plus/dist/PurrlorPlus-Setup.exe
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/plus-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = "${{ github.ref_name }}".Substring("plus-v".Length)
+          gh release create "${{ github.ref_name }}" dist/PurrlorPlus-Setup.exe dist/PurrlorPlus-Setup.exe.sig `
+            --title "Purrlor Plus $version" `
+            --notes "Purrlor Plus für Windows. PurrlorPlus-Setup.exe installieren. Die Signaturdatei wird für automatische Aktualisierungen verwendet."

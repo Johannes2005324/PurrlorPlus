@@ -1,0 +1,1 @@
+{"name":"purrlorplus-extension-tests","private":true,"scripts":{"test":"node --test bootstrap.test.cjs"},"devDependencies":{"jsdom":"26.1.0"}}
