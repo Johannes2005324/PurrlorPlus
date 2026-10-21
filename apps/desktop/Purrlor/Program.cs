@@ -118,6 +118,8 @@ internal sealed class WindowButton : Control
     {
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
         SetStyle(ControlStyles.Selectable, false);
+        SetStyle(ControlStyles.StandardClick, true);
+        SetStyle(ControlStyles.StandardDoubleClick, false);
         TabStop = false;
         Cursor = Cursors.Default;
         BackColor = MainForm.ChromeColor;
@@ -135,11 +137,8 @@ internal sealed class WindowButton : Control
     }
     protected override void OnMouseUp(MouseEventArgs e)
     {
-        bool shouldClick = e.Button == MouseButtons.Left && pressed && ClientRectangle.Contains(e.Location);
         pressed = false; Invalidate(); base.OnMouseUp(e);
-        if (shouldClick) PerformClick();
     }
-    public void PerformClick() => OnClick(EventArgs.Empty);
 
     protected override void OnPaint(PaintEventArgs e)
     {
