@@ -42,9 +42,12 @@ import { membersAsPeople, useMentionAutocomplete } from './useMentionAutocomplet
 import { useShortcodeAutocomplete } from './useShortcodeAutocomplete';
 import { useVoiceRecorder } from './useVoiceRecorder';
 import { VoiceRecorderBar } from './VoiceRecorderBar';
+import { playMessageSentSound } from '../notifications/messageSounds';
 import './Composer.css';
 
 const TYPING_TIMEOUT_MS = 10000;
+/** How many files one message can carry; each still goes out as its own event. */
+const MAX_ATTACHMENTS = 8;
 const TYPING_REFRESH_MS = 4000;
 // Phone-sized layouts (matches MainPane's): there, focusing the box pops up the on-screen
 // keyboard over the channel just opened, so switching channels leaves focus alone.
@@ -74,7 +77,7 @@ export function Composer({
   const emotes = useRoomEmotes(room ?? undefined);
   const members = useRoomMembers(roomId);
   const [text, setText] = useState('');
-  const [attachment, setAttachment] = useState<File>();
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [commandError, setCommandError] = useState<string>();
@@ -181,13 +184,13 @@ export function Composer({
 
   const send = async () => {
     const body = text.trim();
-    if ((!body && !attachment) || sending) return;
+    if ((!body && attachments.length === 0) || sending) return;
     // `!bug <project> <text>` goes to the server's admins, never into the channel, so it skips
     // slowmode and the blocked words too.
     const bug = parseBugCommand(body);
     if (bug) {
       setCommandNotice(undefined);
-      if (bug.type === 'usage' || attachment) {
+      if (bug.type === 'usage' || attachments.length > 0) {
         setCommandError(bug.type === 'usage' ? `Usage: ${BUG_USAGE}` : 'A bug report is text only: send the file on its own.');
         return;
       }
@@ -223,20 +226,24 @@ export function Composer({
     setText('');
     mention.close();
     shortcodeAutocomplete.close();
-    const fileToSend = attachment;
-    setAttachment(undefined);
+    const filesToSend = attachments;
+    let filesSent = 0;
+    setAttachments([]);
     stopTyping();
-    // A reply goes on the first message sent: the file when there is one (so an image-only reply is
-    // still a reply), otherwise the text.
+    // A reply goes on the first message sent: the first file when there is one (so an image-only
+    // reply is still a reply), otherwise the text.
     const replyTo = replyingTo?.eventId;
     try {
       // Matrix has no combined attachment+caption event shape — Element's own convention (and
       // the one followed here) is to send the file as its own event, then any typed text as a
-      // separate, ordinary follow-up message.
-      if (fileToSend) {
+      // separate, ordinary follow-up message. Several files go one event each, in order.
+      if (filesToSend.length > 0) {
         setUploading(true);
         try {
-          await sendFileMessage(mx, roomId, threadId, fileToSend, replyTo);
+          for (const file of filesToSend) {
+            await sendFileMessage(mx, roomId, threadId, file, filesSent === 0 ? replyTo : undefined);
+            filesSent += 1;
+          }
         } finally {
           setUploading(false);
         }
@@ -257,7 +264,7 @@ export function Composer({
             room ? canMentionRoom(room, mx.getUserId() ?? '') : false,
             mentionGroups
           );
-          const relatesTo = replyTo && !fileToSend ? buildReplyRelation(replyTo) : undefined;
+          const relatesTo = replyTo && filesToSend.length === 0 ? buildReplyRelation(replyTo) : undefined;
           const linkEmbeds = await embeds.prepare(effectiveBody);
           if (formattedBody || relatesTo || mentionedUserIds.length > 0 || mentionsRoom || linkEmbeds) {
             await mx.sendMessage(roomId, threadId, {
@@ -275,13 +282,15 @@ export function Composer({
           }
         }
       }
+      if (filesToSend.length > 0 || !isCommand) playMessageSentSound();
       mention.reset();
       shortcodeAutocomplete.reset();
       embeds.reset();
       onCancelReply?.();
     } catch (err) {
       setText(body); // restore the draft so a failed send doesn't lose it
-      if (fileToSend) setAttachment(fileToSend);
+      // Only the files that didn't go out, so a retry doesn't send the rest twice.
+      if (filesSent < filesToSend.length) setAttachments(filesToSend.slice(filesSent));
       if (body.startsWith('/') && !body.startsWith('//')) {
         setCommandError(err instanceof Error ? err.message : 'Command failed');
       }
@@ -321,6 +330,7 @@ export function Composer({
       // up front so a slow/failed upload doesn't also block or repeat the decode.
       const waveform = await computeWaveform(recorded.blob).catch(() => []);
       await sendVoiceMessage(mx, roomId, threadId, recorded.blob, recorded.mimetype, recorded.durationMs, waveform, replyingTo?.eventId);
+      playMessageSentSound();
       voiceRecorder.reset();
       onCancelReply?.();
     } catch (err) {
@@ -358,23 +368,30 @@ export function Composer({
     }
   };
 
+  const addAttachments = (files: File[]) => {
+    if (files.length === 0) return;
+    const free = MAX_ATTACHMENTS - attachments.length;
+    if (files.length > free) setCommandError(`Up to ${MAX_ATTACHMENTS} files per message: the rest weren’t added.`);
+    if (free > 0) setAttachments([...attachments, ...files.slice(0, free)]);
+  };
+
   const handleFileChange = (evt: ChangeEvent<HTMLInputElement>) => {
-    const file = evt.target.files?.[0];
+    const files = Array.from(evt.target.files ?? []);
     evt.target.value = ''; // allow re-picking the same file after removing it
-    if (file) setAttachment(file);
+    addAttachments(files);
     focusInput();
   };
 
   const handlePaste = (evt: ClipboardEvent<HTMLTextAreaElement>) => {
-    const pastedFile = Array.from(evt.clipboardData.items)
+    const pastedFiles = Array.from(evt.clipboardData.items)
       .filter((item) => item.kind === 'file')
       .map((item) => item.getAsFile())
-      .find((file): file is File => file !== null);
+      .filter((file): file is File => file !== null);
     // A plain text paste has no file items at all — only intercept when the clipboard actually
     // carries a file (e.g. a copied screenshot), so normal text pasting is untouched.
-    if (pastedFile) {
+    if (pastedFiles.length > 0) {
       evt.preventDefault();
-      setAttachment(pastedFile);
+      addAttachments(pastedFiles);
     }
   };
 
@@ -403,14 +420,13 @@ export function Composer({
     evt.preventDefault();
     dragDepthRef.current = 0;
     setIsDragOver(false);
-    const file = evt.dataTransfer.files?.[0];
-    if (file) setAttachment(file);
+    addAttachments(Array.from(evt.dataTransfer.files ?? []));
     focusInput();
   };
 
   // Discord/Element convention: the mic button only stands in for send while there's nothing
   // else to send — as soon as there's typed text or a picked attachment, send takes over.
-  const showMicButton = !text.trim() && !attachment;
+  const showMicButton = !text.trim() && attachments.length === 0;
   const isRecordingUi = voiceRecorder.state.status === 'recording' || voiceRecorder.state.status === 'requesting';
 
   // An announcement channel (or any room whose power levels keep you from posting): say so
@@ -456,22 +472,26 @@ export function Composer({
           </button>
         </div>
       )}
-      {attachment && (
-        <div className="nu-composer__attachment" data-nu-role="composer-attachment">
-          <span className="nu-composer__attachment-name">{attachment.name}</span>
-          <button
-            type="button"
-            className="nu-composer__attachment-remove"
-            data-nu-role="composer-attachment-remove"
-            title="Remove attachment"
-            aria-label="Remove attachment"
-            onClick={() => {
-              setAttachment(undefined);
-              focusInput();
-            }}
-          >
-            <Icon name="x" size={14} />
-          </button>
+      {attachments.length > 0 && (
+        <div className="nu-composer__attachments">
+          {attachments.map((file, index) => (
+            <div key={`${index}:${file.name}`} className="nu-composer__attachment" data-nu-role="composer-attachment">
+              <span className="nu-composer__attachment-name">{file.name}</span>
+              <button
+                type="button"
+                className="nu-composer__attachment-remove"
+                data-nu-role="composer-attachment-remove"
+                title="Remove attachment"
+                aria-label={`Remove ${file.name}`}
+                onClick={() => {
+                  setAttachments(attachments.filter((_, i) => i !== index));
+                  focusInput();
+                }}
+              >
+                <Icon name="x" size={14} />
+              </button>
+            </div>
+          ))}
         </div>
       )}
       {commandMatches.length > 0 && (
@@ -541,7 +561,7 @@ export function Composer({
             dropUp
           >
             <MenuItem icon="image" role="composer-attach-file" onSelect={() => fileInputRef.current?.click()}>
-              Upload a file
+              Upload files
             </MenuItem>
             {/* Polls don't have a rendering in a thread's own simplified reply list (ThreadPanel.tsx
                 shows plain text bodies only), so the option is hidden there rather than creating a
@@ -557,6 +577,7 @@ export function Composer({
             type="file"
             className="nu-composer__file-input"
             data-nu-role="composer-file-input"
+            multiple
             onChange={handleFileChange}
           />
           <textarea
@@ -584,7 +605,7 @@ export function Composer({
               // Sent immediately as its own m.sticker event — a sticker isn't text to compose
               // further, unlike an emote (which inserts a :shortcode: for the rest of the message
               // to build around).
-              void mx.sendStickerMessage(roomId, threadId, sticker.mxcUrl, undefined, sticker.body);
+              void mx.sendStickerMessage(roomId, threadId, sticker.mxcUrl, undefined, sticker.body).then(playMessageSentSound, () => {});
               focusInput();
             }}
           />
@@ -607,7 +628,7 @@ export function Composer({
               type="submit"
               title={uploading ? 'Uploading…' : 'Send'}
               aria-label={uploading ? 'Uploading' : 'Send'}
-              disabled={(!text.trim() && !attachment) || sending || (slowmodeWait > 0 && !text.trim().startsWith('/'))}
+              disabled={(!text.trim() && attachments.length === 0) || sending || (slowmodeWait > 0 && !text.trim().startsWith('/'))}
               // Keeps the caret in the box: on a phone, tapping Send took focus off it, so the
               // keyboard dropped mid-send and the timeline jumped about under your message.
               onMouseDown={(evt) => evt.preventDefault()}

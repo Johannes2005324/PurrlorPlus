@@ -16,6 +16,10 @@ export type AudioSettings = {
   autoGainControl: boolean;
   /** Everyone in the call, 0–1. Each person's own slider multiplies on top of it. */
   outputVolume: number;
+  /** The soft blip when a message of yours goes out. */
+  messageSentSound: boolean;
+  /** The blip when a message that would notify you comes in, Notification permission or not. */
+  messageReceivedSound: boolean;
 };
 
 export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
@@ -25,6 +29,8 @@ export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   noiseSuppression: true,
   autoGainControl: true,
   outputVolume: 1,
+  messageSentSound: true,
+  messageReceivedSound: true,
 };
 
 const STORAGE_KEY = 'nekous_audio_settings';
@@ -42,6 +48,8 @@ function load(): AudioSettings {
       noiseSuppression: bool(stored.noiseSuppression, true),
       autoGainControl: bool(stored.autoGainControl, true),
       outputVolume: Number.isFinite(volume) && volume >= 0 && volume <= 1 ? volume : 1,
+      messageSentSound: bool(stored.messageSentSound, true),
+      messageReceivedSound: bool(stored.messageReceivedSound, true),
     };
   } catch {
     return DEFAULT_AUDIO_SETTINGS;

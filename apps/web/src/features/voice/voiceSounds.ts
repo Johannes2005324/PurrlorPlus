@@ -38,7 +38,7 @@ export function warmUpAudioContext(): void {
  * @param duration  - total duration (seconds)
  * @param volume    - gain 0..1
  */
-function playTone(freqStart: number, freqEnd: number, duration: number, volume: number) {
+export function playTone(freqStart: number, freqEnd: number, duration: number, volume: number) {
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;

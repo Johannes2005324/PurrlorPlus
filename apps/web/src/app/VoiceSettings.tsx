@@ -213,7 +213,7 @@ function deviceName(d: MediaDeviceInfo, i: number, fallback: string): string {
   return d.label || `${fallback} ${i + 1}`;
 }
 
-/** Account Settings → Voice & Audio: this device's microphone, speakers and call volume. */
+/** Account Settings → Voice & Audio: this device's microphone, speakers, call volume and message sounds. */
 export function VoiceSettings() {
   const settings = useAudioSettings();
   const [devices, refreshDevices] = useDevices();
@@ -340,6 +340,32 @@ export function VoiceSettings() {
         />
         <span className="nu-field__hint">Each person’s own slider in a call adjusts them on top of this.</span>
       </label>
+
+      <div className="nu-field" data-nu-role="message-sounds">
+        Message sounds
+        <label className="nu-field__checkbox-row">
+          <input
+            type="checkbox"
+            data-nu-role="message-sound-sent"
+            checked={settings.messageSentSound}
+            onChange={(e) => saveAudioSettings({ messageSentSound: e.target.checked })}
+          />
+          A blip when my message is sent
+        </label>
+        <label className="nu-field__checkbox-row">
+          <input
+            type="checkbox"
+            data-nu-role="message-sound-received"
+            checked={settings.messageReceivedSound}
+            onChange={(e) => saveAudioSettings({ messageReceivedSound: e.target.checked })}
+          />
+          A blip when a message comes in
+        </label>
+        <span className="nu-field__hint">
+          Played by Purrlor’s tab itself, so they work without desktop notifications. Incoming ones
+          follow your notification settings: a muted channel stays quiet.
+        </span>
+      </div>
 
       <KeybindSettings />
 

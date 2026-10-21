@@ -8,13 +8,15 @@ import { isPostActivity } from '../../matrix/postNotifications';
 import { findParentSpaceId } from '../../matrix/spaceChildren';
 import { useOpenFeedRoom } from '../feed/useOpenFeedRoom';
 import { useOpenPost } from '../feed/useOpenPost';
+import { playMessageReceivedSound } from './messageSounds';
 
 /**
  * Fires a browser Notification for any live `m.room.message` that the user's own push rules say
  * should notify (`mx.getPushActionsForEvent` — the exact same evaluation the homeserver used to
  * compute the unread/highlight counts behind the badges in useUnreadCounts.ts, so "gets a
  * notification" and "shows a highlight badge" always agree), except when that room is already
- * open in a focused window — no point interrupting for what's already on screen. Likes and
+ * open in a focused window — no point interrupting for what's already on screen. A message also
+ * plays a blip in the tab (messageSounds.ts), with or without the browser's permission. Likes and
  * comments on your posts come through the same way: they only notify at all because of the rules
  * matrix/postNotifications.ts gives you for your own feeds, and clicking one opens the posts view,
  * since a feed room isn't a channel. Headless:
@@ -47,11 +49,13 @@ export function DesktopNotifications() {
       const postActivity = isPostActivity(event.getType());
       if (event.getType() !== 'm.room.message' && !postActivity) return;
       if (event.getSender() === mx.getUserId()) return;
-      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
       if (selectedRoomIdRef.current === room.roomId && document.hasFocus()) return;
 
       const actions = mx.getPushActionsForEvent(event);
       if (!actions?.notify) return;
+      // The in-tab blip needs no permission, so it plays whether or not the popup below does.
+      if (!postActivity) playMessageReceivedSound();
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
 
       const senderName = event.sender?.name ?? event.getSender() ?? 'Someone';
       const content = event.getContent();
